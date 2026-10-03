@@ -236,22 +236,14 @@ function headline(text: string, at: number, dur: number) {
   t.className = "headline";
   t.textContent = text;
   el.appendChild(t);
-  // One move: it streaks in from the right, smeared by its own speed,
-  // decelerates, and settles centred and sharp — then holds to be read.
-  const TRAVEL = 0.68;
+  // Like the reference ad: one scroll at a constant speed, right to left,
+  // in from beyond the right edge and out past the left. No easing, no
+  // stop — the sentence reads as it passes.
   const pos = motionValue(0);
   pos.on("change", (v) => {
-    const startX = W + 30;
-    const endX = (W - t.offsetWidth) / 2;
-    const k = Math.min(1, v / TRAVEL);
-    const eased = 1 - Math.pow(1 - k, 3);
-    const speed = k < 1 ? 3 * Math.pow(1 - k, 2) : 0; // d(eased)/dk, 3 → 0
-    const x = startX + (endX - startX) * eased;
-    t.style.transform = `translateX(${x.toFixed(1)}px)`;
-    t.style.filter = `blur(${(Math.min(1, speed) * 2.4).toFixed(2)}px)`;
-    t.style.textShadow = speed > 0.02
-      ? `${(speed * 14).toFixed(0)}px 0 6px rgba(255,30,30,.5), ${(speed * 30).toFixed(0)}px 0 10px rgba(255,30,30,.28)`
-      : "2px 0 rgba(255,60,60,.55), -2px 0 rgba(60,200,255,.35)";
+    const from = W + 12;
+    const to = -t.offsetWidth - 12;
+    t.style.transform = `translateX(${(from + (to - from) * v).toFixed(2)}px)`;
   });
   sequence.push([pos, [0, 1], { at, duration: dur, ease: "linear" }]);
   cut(el, at, dur);

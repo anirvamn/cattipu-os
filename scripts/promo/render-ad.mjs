@@ -7,8 +7,10 @@
 // 2. opens it in headless Chrome or Edge (a throwaway profile, never yours)
 // 3. seeks the paused Motion sequence frame by frame, waiting for each
 //    frame's images, and captures every frame exactly
-// 4. records the frames into docs/media/cattipu-ad.mp4 with the browser's
-//    MediaRecorder — silent by default
+// 4. encodes the frames into docs/media/cattipu-ad.mp4 one by one with
+//    WebCodecs at exact timestamps (mp4.mjs writes the file), so playback is
+//    perfectly even; with AD_AUDIO=1 the browser's MediaRecorder records
+//    frames and sound together instead
 // 5. writes docs/media/cattipu-ad.gif, a teaser of the fast section, with
 //    Python + Pillow
 //
@@ -26,6 +28,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import { launch } from "./cdp.mjs";
+import { writeMp4 } from "./mp4.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const FPS = 25;
@@ -82,8 +85,9 @@ html, body { margin: 0; background: #000; }
 .card-stack { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .card-text { font-family: "Px437", monospace; letter-spacing: 1px; text-align: center; padding: 0 28px; line-height: 1;
   text-shadow: 2px 0 rgba(255,60,60,.55), -2px 0 rgba(60,200,255,.35); }
-.headline { position: absolute; left: 0; top: 218px; white-space: nowrap; font-family: "Px437", monospace;
-  font-size: 44px; line-height: 1; color: #ff1e1e; }
+.headline { position: absolute; left: 0; top: 206px; white-space: nowrap; font-family: "Px437", monospace;
+  font-size: 56px; line-height: 1; color: #ff1e1e; filter: blur(0.5px);
+  text-shadow: 5px 0 3px rgba(255,30,30,.5), 12px 0 6px rgba(255,30,30,.22); }
 .fly { position: absolute; left: 304px; top: 224px; width: 32px; height: 32px; image-rendering: pixelated; opacity: 0; }
 .badge { width: 330px; height: 330px; border-radius: 50%; background: #C6971F; color: #002A73; display: grid;
   place-items: center; text-align: center; font-family: "Px437", monospace; font-size: 40px; line-height: 1.1;
@@ -144,58 +148,107 @@ try {
 
   // ── 4. MP4 (and, with AD_AUDIO=1, its sound), recorded by the browser ───
   const frameUrls = Array.from({ length: total }, (_, f) => url(frameFile(f)));
-  const encoded = await b.evaluate(`(async () => {
-    const urls = ${JSON.stringify(frameUrls)};
-    const withAudio = ${AUDIO};
-    const audioBuffer = withAudio ? await window.__ad.renderAudio() : null;
-    const canvas = document.getElementById('out');
-    const g = canvas.getContext('2d');
-    const cache = new Map();
-    const get = (f) => {
-      if (!cache.has(f) && f < urls.length) cache.set(f, new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = urls[f]; }));
-      return cache.get(f);
-    };
-    for (let f = 0; f < 50; f += 1) get(f);
-    g.drawImage(await get(0), 0, 0);
-    // The soundtrack is rendered at 22 kHz for its period sound; playback
-    // resamples it to the device rate the encoder expects, at the spot's speed.
-    const ac = withAudio ? new AudioContext() : null;
-    let src = null;
-    const tracks = [...canvas.captureStream(${FPS}).getVideoTracks()];
-    if (ac) {
-      await ac.resume();
-      const dest = ac.createMediaStreamDestination();
-      src = ac.createBufferSource(); src.buffer = audioBuffer; src.playbackRate.value = ${SPEED}; src.connect(dest);
-      tracks.push(...dest.stream.getAudioTracks());
-    }
-    const stream = new MediaStream(tracks);
-    const types = withAudio ? ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/webm;codecs=vp9,opus'] : ['video/mp4;codecs=avc1.42E01E', 'video/webm;codecs=vp9'];
-    const type = types.find((t) => MediaRecorder.isTypeSupported(t));
-    const rec = new MediaRecorder(stream, withAudio ? { mimeType: type, videoBitsPerSecond: 6000000, audioBitsPerSecond: 192000 } : { mimeType: type, videoBitsPerSecond: 6000000 });
-    const chunks = []; rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
-    const done = new Promise((res) => (rec.onstop = res));
-    rec.start();
-    if (src) src.start();
-    const t0 = performance.now();
-    for (let f = 0; f < urls.length; f += 1) {
-      const img = await get(f);
-      if (img) g.drawImage(img, 0, 0);
-      cache.delete(f - 2);
-      for (let k = 1; k <= 50; k += 1) get(f + k);
-      const wait = t0 + (f + 1) * ${1000 / FPS} - performance.now();
-      await new Promise((r) => setTimeout(r, Math.max(0, wait)));
-    }
-    rec.stop(); await done; if (ac) await ac.close();
-    const blob = new Blob(chunks, { type });
-    const buf = new Uint8Array(await blob.arrayBuffer());
-    let s = ''; for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode(...buf.subarray(i, i + 0x8000));
-    return type + '|' + btoa(s);
-  })()`);
-  const cut = encoded.indexOf("|");
-  const mime = encoded.slice(0, cut);
-  const outVideo = mime.startsWith("video/mp4") ? OUT_MP4 : OUT_MP4.replace(/\.mp4$/, ".webm");
-  writeFileSync(outVideo, Buffer.from(encoded.slice(cut + 1), "base64"));
-  console.log(`video ${outVideo} (${mime})`);
+  if (AUDIO) {
+    const encoded = await b.evaluate(`(async () => {
+      const urls = ${JSON.stringify(frameUrls)};
+      const withAudio = ${AUDIO};
+      const audioBuffer = withAudio ? await window.__ad.renderAudio() : null;
+      const canvas = document.getElementById('out');
+      const g = canvas.getContext('2d');
+      const cache = new Map();
+      const get = (f) => {
+        if (!cache.has(f) && f < urls.length) cache.set(f, new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = urls[f]; }));
+        return cache.get(f);
+      };
+      for (let f = 0; f < 50; f += 1) get(f);
+      g.drawImage(await get(0), 0, 0);
+      // The soundtrack is rendered at 22 kHz for its period sound; playback
+      // resamples it to the device rate the encoder expects, at the spot's speed.
+      const ac = withAudio ? new AudioContext() : null;
+      let src = null;
+      const tracks = [...canvas.captureStream(${FPS}).getVideoTracks()];
+      if (ac) {
+        await ac.resume();
+        const dest = ac.createMediaStreamDestination();
+        src = ac.createBufferSource(); src.buffer = audioBuffer; src.playbackRate.value = ${SPEED}; src.connect(dest);
+        tracks.push(...dest.stream.getAudioTracks());
+      }
+      const stream = new MediaStream(tracks);
+      const types = withAudio ? ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/webm;codecs=vp9,opus'] : ['video/mp4;codecs=avc1.42E01E', 'video/webm;codecs=vp9'];
+      const type = types.find((t) => MediaRecorder.isTypeSupported(t));
+      const rec = new MediaRecorder(stream, withAudio ? { mimeType: type, videoBitsPerSecond: 6000000, audioBitsPerSecond: 192000 } : { mimeType: type, videoBitsPerSecond: 6000000 });
+      const chunks = []; rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+      const done = new Promise((res) => (rec.onstop = res));
+      rec.start();
+      if (src) src.start();
+      const t0 = performance.now();
+      for (let f = 0; f < urls.length; f += 1) {
+        const img = await get(f);
+        if (img) g.drawImage(img, 0, 0);
+        cache.delete(f - 2);
+        for (let k = 1; k <= 50; k += 1) get(f + k);
+        const wait = t0 + (f + 1) * ${1000 / FPS} - performance.now();
+        await new Promise((r) => setTimeout(r, Math.max(0, wait)));
+      }
+      rec.stop(); await done; if (ac) await ac.close();
+      const blob = new Blob(chunks, { type });
+      const buf = new Uint8Array(await blob.arrayBuffer());
+      let s = ''; for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+      return type + '|' + btoa(s);
+    })()`);
+    const cut = encoded.indexOf("|");
+    const mime = encoded.slice(0, cut);
+    const outVideo = mime.startsWith("video/mp4") ? OUT_MP4 : OUT_MP4.replace(/\.mp4$/, ".webm");
+    writeFileSync(outVideo, Buffer.from(encoded.slice(cut + 1), "base64"));
+    console.log(`video ${outVideo} (${mime})`);
+  } else {
+    // Frame-exact: every frame encoded at its own timestamp, never recorded
+    // against the clock.
+    const encodedFrames = await b.evaluate(`(async () => {
+      const urls = ${JSON.stringify(frameUrls)};
+      const canvas = document.getElementById('out');
+      const g = canvas.getContext('2d');
+      const load = (u) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = u; });
+      const b64 = (bytes) => { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000)); return btoa(s); };
+      const samples = [];
+      let description = null;
+      let failure = null;
+      const encoder = new VideoEncoder({
+        output: (chunk, meta) => {
+          if (meta && meta.decoderConfig && meta.decoderConfig.description) description = new Uint8Array(meta.decoderConfig.description);
+          const data = new Uint8Array(chunk.byteLength);
+          chunk.copyTo(data);
+          samples.push([chunk.type === 'key', b64(data)]);
+        },
+        error: (e) => { failure = String(e); },
+      });
+      encoder.configure({ codec: 'avc1.42001f', width: ${W}, height: ${H}, bitrate: 6000000, framerate: ${FPS}, latencyMode: 'quality', avc: { format: 'avc' } });
+      let next = load(urls[0]);
+      for (let f = 0; f < urls.length; f += 1) {
+        const img = await next;
+        if (f + 1 < urls.length) next = load(urls[f + 1]);
+        g.drawImage(img, 0, 0);
+        const frame = new VideoFrame(canvas, { timestamp: Math.round((f * 1e6) / ${FPS}), duration: Math.round(1e6 / ${FPS}) });
+        encoder.encode(frame, { keyFrame: f % ${FPS * 2} === 0 });
+        frame.close();
+        while (encoder.encodeQueueSize > 8) await new Promise((r) => setTimeout(r, 1));
+        if (failure) throw new Error(failure);
+      }
+      await encoder.flush();
+      encoder.close();
+      if (failure) throw new Error(failure);
+      return { description: b64(description), samples };
+    })()`);
+    const mp4 = writeMp4({
+      width: W,
+      height: H,
+      fps: FPS,
+      avcC: Buffer.from(encodedFrames.description, "base64"),
+      samples: encodedFrames.samples.map(([key, data]) => ({ key, data: Buffer.from(data, "base64") })),
+    });
+    writeFileSync(OUT_MP4, mp4);
+    console.log(`video ${OUT_MP4} (H.264, ${encodedFrames.samples.length} frames encoded at exact timestamps)`);
+  }
 
   // ── 5. GIF teaser for the README: spot time 6–18s, at the spot's speed ──
   const py = spawnSync(process.platform === "win32" ? "python" : "python3", [

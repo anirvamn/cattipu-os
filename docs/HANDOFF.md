@@ -200,6 +200,8 @@ collaboration. None of this starts before the MVP is finished.
     demo game in `scripts/promo/apps/`.
   - `ad.ts` is one Motion timeline: cuts on the beat, zooms onto the real
     clicks, and a synthesized soundtrack.
-  - `render-ad.mjs` renders it frame by frame and records picture and sound
-    to MP4.
+  - `render-ad.mjs` renders it frame by frame and encodes each frame at its
+    exact timestamp with WebCodecs. `mp4.mjs` writes the file, so playback is
+    perfectly even. With `AD_AUDIO=1` it records picture and sound together
+    instead.
   - The clips are cached in `scripts/promo/.cache/` (gitignored).
