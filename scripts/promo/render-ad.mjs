@@ -83,6 +83,12 @@ html, body { margin: 0; background: #000; }
   padding: 40px; box-sizing: border-box; box-shadow: inset 0 0 0 6px #002A73; }
 .wall { position: absolute; left: 0; top: 0; width: ${W}px; height: ${H}px; transform-origin: 50% 50%; image-rendering: pixelated; }
 .glitch { color: #ff1e1e; font-size: 96px; filter: blur(0.6px); }
+.solo { width: 192px; height: 192px; image-rendering: pixelated; }
+.spark { position: absolute; left: 316px; top: 236px; width: 8px; height: 8px; background: #ffd447; box-shadow: 0 0 0 2px #ff5a3c; opacity: 0; }
+.paper { background-image: url("${paper}") !important; }
+.page { background: #f7f5ef; }
+.page-text { font-family: "Ark", serif; font-size: 44px; color: #111; letter-spacing: 0.5px; }
+.page-caret { font-family: "Ark", serif; margin-left: 2px; color: #111; }
 .flash { background: #fffbe8; }
 .end-plate { background: #E9DFC4 url("${paper}"); display: flex; flex-direction: column; align-items: center;
   justify-content: center; gap: 10px; }

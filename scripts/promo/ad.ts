@@ -191,12 +191,17 @@ function card(lines: Array<{ text: string; size: number; color: string }>, at: n
 }
 
 /** The circle badge, like a 90s campaign roundel. */
-function badge(text: string, at: number, dur: number) {
+function badge(text: string, at: number, dur: number, colors?: { disc: string; ink: string; plate: string }) {
   const el = layer("shot card");
-  el.style.background = "#000";
+  el.style.background = colors?.plate ?? "#000";
   const disc = document.createElement("div");
   disc.className = "badge";
   disc.textContent = text;
+  if (colors) {
+    disc.style.background = colors.disc;
+    disc.style.color = colors.ink;
+    disc.style.boxShadow = `inset 0 0 0 6px ${colors.ink}`;
+  }
   el.appendChild(disc);
   sequence.push([disc, { scale: [0.2, 1.08, 1], rotate: [-12, 3, 0] }, { at, duration: 0.4, ease: "easeOut" }]);
   cut(el, at, dur);
@@ -218,28 +223,6 @@ function wallpaperFlash(index: number, at: number, dur: number) {
 /** One white frame, the editor's punctuation. */
 function flash(at: number) {
   cut(layer("shot flash"), at, 0.04);
-}
-
-/** Text typed on black with a blinking caret. */
-function typing(text: string, at: number, dur: number) {
-  const el = layer("shot card");
-  el.style.background = "#000";
-  const line = document.createElement("div");
-  line.className = "card-text";
-  line.style.fontSize = "40px";
-  line.style.color = "#f2ead6";
-  const typed = document.createElement("span");
-  const caret = document.createElement("span");
-  caret.textContent = "|";
-  line.append(typed, caret);
-  el.appendChild(line);
-  const count = motionValue(0);
-  count.on("change", (v) => (typed.textContent = text.slice(0, Math.round(v))));
-  sequence.push([count, [0, text.length], { at: at + 0.3, duration: dur * 0.6, ease: "linear" }]);
-  const blink = motionValue(0);
-  blink.on("change", (v) => (caret.style.opacity = Math.floor(v) % 2 === 0 ? "1" : "0"));
-  sequence.push([blink, [0, Math.round(dur * 3.4)], { at, duration: dur, ease: "linear" }]);
-  cut(el, at, dur);
 }
 
 // ── 0–6s: drums. The headline, then the icons ────────────────────────────
@@ -372,7 +355,7 @@ const FULL: Crop = { x: 200, y: 0, w: 1200 };
   s = beat(2);
   still("ai-console", { x: 90, y: 160, w: 700 }, { x: 100, y: 200, w: 560 }, s.at, s.dur);
   s = beat(1);
-  still("memory", { x: 100, y: 80, w: 900 }, { x: 140, y: 120, w: 700 }, s.at, s.dur);
+  badge("PLAN. BUILD. RUN.", s.at, s.dur, { disc: "#002A73", ink: "#E9DFC4", plate: "#E9DFC4" });
 
   // The rapid-fire montage: half a beat each.
   const half = BEAT / 2;
@@ -396,11 +379,75 @@ const FULL: Crop = { x: 200, y: 0, w: 1200 };
 if (Math.abs(INTRO_END + beatsUsed * BEAT - MUSIC_END) > 1e-6) throw new Error(`the fast section is ${beatsUsed} beats, not 60`);
 flash(MUSIC_END - 0.04);
 
-// ── 30–40s: silence ──────────────────────────────────────────────────────
-typing("What will we build", MUSIC_END + 0.5, 3.2);
+// ── 30–40s: silence. One pixel icon at a time, then the line, the logo ──
+/** A single PixelForge icon, blown up, alone on a plain plate. */
+function iconPlate(name: string, plate: string, at: number, dur: number) {
+  const el = layer("shot card");
+  el.style.background = plate;
+  const icon = document.createElement("img");
+  icon.className = "solo";
+  icon.src = asset(`public/pixelforge/shell/32/${name}.svg`);
+  el.appendChild(icon);
+  cut(el, at, dur);
+  return { el, icon };
+}
+
 {
-  const at = MUSIC_END + 3.8;
-  const dur = 2.0;
+  // A folder pops open on white.
+  const at = MUSIC_END + 0.35;
+  const { icon } = iconPlate("folder", "#f4f1ea", at, 1.3);
+  sequence.push([icon, { y: [0, -26, 0, -10, 0], scale: [1, 1.04, 0.98, 1.02, 1] }, { at, duration: 0.9, ease: "easeOut" }]);
+  const open = motionValue(0);
+  open.on("change", (v) => { icon.src = asset(`public/pixelforge/shell/32/${v > 0.5 ? "folderopen" : "folder"}.svg`); });
+  sequence.push([open, [0, 1], { at: at + 0.5, duration: 0.02 }]);
+}
+{
+  // The Forge anvil throws sparks on black.
+  const at = MUSIC_END + 1.65;
+  const { el, icon } = iconPlate("forge", "#000", at, 1.3);
+  sequence.push([icon, { y: [0, 6, 0, 6, 0] }, { at, duration: 1.2, ease: "linear" }]);
+  for (let i = 0; i < 14; i += 1) {
+    const spark = document.createElement("div");
+    spark.className = "spark";
+    el.appendChild(spark);
+    const angle = -Math.PI / 2 + (i / 13 - 0.5) * 2.4;
+    const dist = 120 + (i % 4) * 40;
+    const t0 = at + (i % 2 === 0 ? 0.08 : 0.68) + (i % 3) * 0.04;
+    sequence.push([spark, { x: [0, Math.cos(angle) * dist], y: [0, Math.sin(angle) * dist + 60], opacity: [1, 1, 0] }, { at: t0, duration: 0.5, ease: "easeOut" }]);
+  }
+}
+{
+  // The Launch rocket lifts off on engineering paper.
+  const at = MUSIC_END + 2.95;
+  const { el, icon } = iconPlate("launch", "#E9DFC4", at, 1.3);
+  el.classList.add("paper");
+  sequence.push([icon, { y: [40, 30, -260] }, { at, duration: 1.25, ease: "easeIn" }]);
+}
+{
+  // "What will we build" typed on a white page, the line left hanging.
+  const at = MUSIC_END + 4.25;
+  const dur = 2.55;
+  const el = layer("shot card page");
+  const line = document.createElement("div");
+  line.className = "page-text";
+  const typed = document.createElement("span");
+  const caret = document.createElement("span");
+  caret.className = "page-caret";
+  caret.textContent = "|";
+  line.append(typed, caret);
+  el.appendChild(line);
+  const text = "What will we build";
+  const count = motionValue(0);
+  count.on("change", (v) => (typed.textContent = text.slice(0, Math.round(v))));
+  sequence.push([count, [0, text.length], { at: at + 0.25, duration: 1.5, ease: "linear" }]);
+  const blink = motionValue(0);
+  blink.on("change", (v) => (caret.style.opacity = Math.floor(v) % 2 === 0 ? "1" : "0"));
+  sequence.push([blink, [0, Math.round(dur * 3.4)], { at, duration: dur, ease: "linear" }]);
+  cut(el, at, dur);
+}
+{
+  const at = MUSIC_END + 6.8;
+  const dur = 1.1;
   const el = layer("shot card");
   el.style.background = "#000";
   const t = document.createElement("div");
@@ -420,7 +467,7 @@ typing("What will we build", MUSIC_END + 0.5, 3.2);
   cut(el, at, dur);
 }
 {
-  const at = MUSIC_END + 6.0;
+  const at = MUSIC_END + 7.9;
   const dur = TOTAL - at;
   const el = layer("shot end-plate");
   const logo = document.createElement("img");
@@ -438,8 +485,8 @@ typing("What will we build", MUSIC_END + 0.5, 3.2);
   el.append(logo, name, tag, url);
   sequence.push([logo, { scale: [0.6, 1], opacity: [0, 1] }, { at, duration: 0.4, ease: "easeOut" }]);
   sequence.push([name, { opacity: [0, 1], y: [12, 0] }, { at: at + 0.35, duration: 0.3 }]);
-  sequence.push([tag, { opacity: [0, 1] }, { at: at + 0.75, duration: 0.3 }]);
-  sequence.push([url, { opacity: [0, 1] }, { at: at + 1.1, duration: 0.3 }]);
+  sequence.push([tag, { opacity: [0, 1] }, { at: at + 0.7, duration: 0.3 }]);
+  sequence.push([url, { opacity: [0, 1] }, { at: at + 1.0, duration: 0.3 }]);
   cut(el, at, dur + 0.1);
 }
 
@@ -522,6 +569,24 @@ async function renderAudio(): Promise<AudioBuffer> {
     o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f0 * 0.5, t + 0.22);
     env(g, t, 0.7, 0.28); o.connect(g).connect(master); o.start(t); o.stop(t + 0.3);
   };
+  // A crunchy power chord: root, fifth and octave, sawtooth, through a soft clipper.
+  const drive = ctx.createWaveShaper();
+  const curve = new Float32Array(1024);
+  for (let i = 0; i < curve.length; i += 1) { const x = i / 511.5 - 1; curve[i] = Math.tanh(x * 6) * 0.9; }
+  drive.curve = curve;
+  const amp = ctx.createBiquadFilter(); amp.type = "lowpass"; amp.frequency.value = 2600;
+  const ampGain = ctx.createGain(); ampGain.gain.value = 0.16;
+  drive.connect(amp).connect(ampGain).connect(master);
+  const power = (t: number, root: number, dur: number) => {
+    for (const f of [root, root * 1.5, root * 2]) {
+      const o = ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = f;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 0.006);
+      g.gain.setValueAtTime(0.5, t + dur * 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(drive); o.start(t); o.stop(t + dur + 0.02);
+    }
+  };
+  const clap = (t: number) => { for (const d of [0, 0.011, 0.022]) noiseHit(t + d, "bandpass", 1500, 0.32, 0.09); };
   const synth = (t: number, freq: number, dur: number, type: OscillatorType, peak: number, cutoff: number) => {
     const o = ctx.createOscillator(); o.type = type; o.frequency.value = freq;
     const f = ctx.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = cutoff;
@@ -538,33 +603,48 @@ async function renderAudio(): Promise<AudioBuffer> {
     if (b % 4 === 2) kick(t + INTRO_BEAT * 0.5, 0.7);
     hat(t); hat(t + INTRO_BEAT / 2, b % 4 === 3);
   }
-  [300, 260, 220, 190, 160, 130, 110, 95].forEach((f, i) => tom(8 * INTRO_BEAT + i * (INTRO_BEAT / 4), f));
+  // Into the drop: toms down the kit, then a snare roll that climbs.
+  [300, 260, 220, 190].forEach((f, i) => tom(8 * INTRO_BEAT + i * (INTRO_BEAT / 4), f));
+  for (let i = 0; i < 8; i += 1) snare(9 * INTRO_BEAT + i * (INTRO_BEAT / 8), 0.35 + i * 0.09);
   kick(INTRO_END - 0.05, 0.8);
 
-  // 6–30s: fast, 150 BPM. A minor: Am F C G, a chord per bar.
+  // 6–30s: fast, 150 BPM, A minor (Am F C G, a chord a bar). Bar 8 is a
+  // drum break; the riff joins at bar 3; the arpeggio lifts the last bars.
   const ROOTS = [110, 87.31, 130.81, 98];
   const CHORDS = [[220, 261.63, 329.63], [174.61, 220, 261.63], [261.63, 329.63, 392], [196, 246.94, 293.66]];
+  /** The riff's rhythm in eighth notes across one bar: 1 = a chord. */
+  const RIFF = [1, 0, 1, 0, 0, 1, 1, 0];
   for (let b = 0; b < 60; b += 1) {
     const t = INTRO_END + b * BEAT;
     const bar = Math.floor(b / 4);
     const inBar = b % 4;
+    const brk = bar === 7;
     const late = b >= 40;
-    if (b % 16 === 0) crash(t);
+    if (b % 16 === 0 || b === 32) crash(t);
     kick(t);
-    if (inBar === 1 || inBar === 3) snare(t);
+    if (inBar === 1 || inBar === 3) { snare(t); if (!brk) clap(t); }
     for (let s = 0; s < 4; s += 1) hat(t + (s * BEAT) / 4, s === 2 && inBar === 3, s % 2 === 0 ? 1 : 0.7);
+    if (brk) {
+      if (inBar === 3) for (let i = 0; i < 4; i += 1) snare(t + (i * BEAT) / 4, 0.5 + i * 0.15);
+      continue;
+    }
     const root = ROOTS[bar % 4];
-    synth(t, root, BEAT * 0.45, "sawtooth", 0.22, 700);
-    synth(t + BEAT / 2, root * 2, BEAT * 0.4, "sawtooth", 0.16, 900);
-    if (inBar === 0 || inBar === 2) for (const f of CHORDS[bar % 4]) synth(t + BEAT / 2, f, BEAT * 0.35, "square", 0.05, 2400);
+    synth(t, root, BEAT * 0.45, "sawtooth", 0.2, 700);
+    synth(t + BEAT / 2, root * 2, BEAT * 0.4, "sawtooth", 0.14, 900);
+    if (bar >= 2) {
+      for (let e = 0; e < 2; e += 1) if (RIFF[inBar * 2 + e]) power(t + (e * BEAT) / 2, root, BEAT * 0.42);
+    } else if (inBar === 0 || inBar === 2) {
+      for (const f of CHORDS[bar % 4]) synth(t + BEAT / 2, f, BEAT * 0.35, "square", 0.05, 2400);
+    }
     if (late) {
       const chord = CHORDS[bar % 4];
-      for (let s = 0; s < 4; s += 1) synth(t + (s * BEAT) / 4, chord[s % 3] * 2, BEAT / 4.5, "square", 0.045, 3200);
+      for (let s = 0; s < 4; s += 1) synth(t + (s * BEAT) / 4, chord[s % 3] * 2, BEAT / 4.5, "square", 0.04, 3200);
     }
   }
   // The last hit, then nothing: the music stops dead at 30s.
   kick(MUSIC_END - BEAT, 1.1); crash(MUSIC_END - BEAT);
   for (const f of CHORDS[0]) synth(MUSIC_END - BEAT, f, BEAT * 0.9, "square", 0.08, 3000);
+  power(MUSIC_END - BEAT, ROOTS[0], BEAT * 0.95);
 
   // CATTIPU's own click on every real press in the fast section.
   if (click) {
