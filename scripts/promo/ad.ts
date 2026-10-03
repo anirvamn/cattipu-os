@@ -382,7 +382,7 @@ const FULL: Crop = { x: 200, y: 0, w: 1200 };
 if (Math.abs(INTRO_END + beatsUsed * BEAT - MUSIC_END) > 1e-6) throw new Error(`the fast section is ${beatsUsed} beats, not ${FAST_BEATS}`);
 flash(MUSIC_END - 0.04);
 
-// ── 30–40s: silence. One pixel icon at a time, then the line, the logo ──
+// ── 30–40s: silence. A pixel icon or two, then the line, the logo ──
 /** A single PixelForge icon, blown up, alone on a plain plate. */
 function iconPlate(name: string, plate: string, at: number, dur: number) {
   const el = layer("shot card");
@@ -396,19 +396,10 @@ function iconPlate(name: string, plate: string, at: number, dur: number) {
 }
 
 {
-  // A folder pops open on white.
-  const at = MUSIC_END + 0.35;
-  const { icon } = iconPlate("folder", "#f4f1ea", at, 1.3);
-  sequence.push([icon, { y: [0, -26, 0, -10, 0], scale: [1, 1.04, 0.98, 1.02, 1] }, { at, duration: 0.9, ease: "easeOut" }]);
-  const open = motionValue(0);
-  open.on("change", (v) => { icon.src = asset(`public/pixelforge/shell/32/${v > 0.5 ? "folderopen" : "folder"}.svg`); });
-  sequence.push([open, [0, 1], { at: at + 0.5, duration: 0.02 }]);
-}
-{
   // The Forge anvil throws sparks on black.
-  const at = MUSIC_END + 1.65;
-  const { el, icon } = iconPlate("forge", "#000", at, 1.3);
-  sequence.push([icon, { y: [0, 6, 0, 6, 0] }, { at, duration: 1.2, ease: "linear" }]);
+  const at = MUSIC_END + 0.35;
+  const { el, icon } = iconPlate("forge", "#000", at, 1.6);
+  sequence.push([icon, { y: [0, 6, 0, 6, 0] }, { at, duration: 1.5, ease: "linear" }]);
   for (let i = 0; i < 14; i += 1) {
     const spark = document.createElement("div");
     spark.className = "spark";
@@ -421,15 +412,15 @@ function iconPlate(name: string, plate: string, at: number, dur: number) {
 }
 {
   // The Launch rocket lifts off on engineering paper.
-  const at = MUSIC_END + 2.95;
-  const { el, icon } = iconPlate("launch", "#E9DFC4", at, 1.3);
+  const at = MUSIC_END + 1.95;
+  const { el, icon } = iconPlate("launch", "#E9DFC4", at, 1.6);
   el.classList.add("paper");
-  sequence.push([icon, { y: [40, 30, -260] }, { at, duration: 1.25, ease: "easeIn" }]);
+  sequence.push([icon, { y: [40, 30, -260] }, { at, duration: 1.55, ease: "easeIn" }]);
 }
 {
   // "What will we build" typed on a white page, the line left hanging.
-  const at = MUSIC_END + 4.25;
-  const dur = 2.55;
+  const at = MUSIC_END + 3.55;
+  const dur = 3.0;
   const el = layer("shot card page");
   const line = document.createElement("div");
   line.className = "page-text";
@@ -449,8 +440,8 @@ function iconPlate(name: string, plate: string, at: number, dur: number) {
   cut(el, at, dur);
 }
 {
-  const at = MUSIC_END + 6.8;
-  const dur = 1.1;
+  const at = MUSIC_END + 6.55;
+  const dur = 1.25;
   const el = layer("shot card");
   el.style.background = "#000";
   const t = document.createElement("div");
@@ -470,7 +461,7 @@ function iconPlate(name: string, plate: string, at: number, dur: number) {
   cut(el, at, dur);
 }
 {
-  const at = MUSIC_END + 7.9;
+  const at = MUSIC_END + 7.8;
   const dur = TOTAL - at;
   const el = layer("shot end-plate");
   const logo = document.createElement("img");
@@ -506,8 +497,13 @@ tick.on("change", (v) => {
 });
 sequence.push([tick, [0, TOTAL * 25], { at: 0, duration: TOTAL, ease: "linear" }]);
 
-// ── the soundtrack ───────────────────────────────────────────────────────
-const RATE = 44100;
+// ── the soundtrack: a 90s PC / TV-ad sound ──────────────────────────────
+// Original music, made the way mid-90s computers made it: two-operator FM
+// voices (the AdLib / Sound Blaster sound) for the bass, the brass hook and
+// the electric piano; the era's orchestra hit; a breakbeat with a gated-
+// reverb snare. Rendered at 22,050 Hz through an 8-bit-style crusher and
+// a TV-speaker band, so it sounds like it is coming out of a 1996 PC.
+const RATE = 22050;
 
 function noiseBuffer(ctx: BaseAudioContext, seconds: number) {
   const buf = ctx.createBuffer(1, Math.ceil(RATE * seconds), RATE);
@@ -535,14 +531,41 @@ async function loadSample(ctx: BaseAudioContext, path: string): Promise<AudioBuf
 
 async function renderAudio(): Promise<AudioBuffer> {
   const ctx = new OfflineAudioContext(2, Math.ceil(RATE * TOTAL), RATE);
+
+  // The output stage: bus → compressor → 8-bit-style crusher → TV band → headroom.
   const master = ctx.createGain();
-  master.gain.value = 0.75;
+  master.gain.value = 0.5;
   const comp = ctx.createDynamicsCompressor();
-  comp.threshold.value = -14;
-  comp.ratio.value = 4;
-  master.connect(comp).connect(ctx.destination);
+  comp.threshold.value = -16;
+  comp.ratio.value = 5;
+  const crush = ctx.createWaveShaper();
+  const steps = 96;
+  const curve = new Float32Array(4096);
+  for (let i = 0; i < curve.length; i += 1) {
+    const x = (i / (curve.length - 1)) * 2 - 1;
+    curve[i] = Math.round(Math.tanh(x * 1.4) * steps) / steps;
+  }
+  crush.curve = curve;
+  const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 70;
+  const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 7200;
+  // Headroom after the filters: they and the AAC encoder overshoot a little.
+  const out = ctx.createGain(); out.gain.value = 0.8;
+  master.connect(comp).connect(crush).connect(hp).connect(lp).connect(out).connect(ctx.destination);
+
   const noise = noiseBuffer(ctx, 2);
   const click = await loadSample(ctx, "public/sounds/window-open.wav");
+
+  // Gated reverb: a short, flat, abruptly cut tail.
+  const gate = ctx.createConvolver();
+  const ir = ctx.createBuffer(2, Math.round(RATE * 0.16), RATE);
+  for (let c = 0; c < 2; c += 1) {
+    const d = ir.getChannelData(c);
+    let r = 777 + c;
+    for (let i = 0; i < d.length; i += 1) { r = (r * 16807) % 2147483647; d[i] = ((r / 2147483647) * 2 - 1) * 0.55; }
+  }
+  gate.buffer = ir;
+  const gateOut = ctx.createGain(); gateOut.gain.value = 0.45;
+  gate.connect(gateOut).connect(master);
 
   const env = (g: GainNode, t: number, peak: number, decay: number) => {
     g.gain.setValueAtTime(0.0001, t);
@@ -551,116 +574,141 @@ async function renderAudio(): Promise<AudioBuffer> {
   };
   const kick = (t: number, v = 1) => {
     const o = ctx.createOscillator(); const g = ctx.createGain();
-    o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.13);
-    env(g, t, 0.95 * v, 0.36); o.connect(g).connect(master); o.start(t); o.stop(t + 0.4);
+    o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(48, t + 0.1);
+    env(g, t, 1.0 * v, 0.3); o.connect(g).connect(master); o.start(t); o.stop(t + 0.34);
   };
-  const noiseHit = (t: number, type: BiquadFilterType, freq: number, peak: number, decay: number) => {
-    const s = ctx.createBufferSource(); s.buffer = noise;
+  const noiseHit = (t: number, type: BiquadFilterType, freq: number, peak: number, decay: number, to: AudioNode = master) => {
+    const src = ctx.createBufferSource(); src.buffer = noise;
     const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq;
     const g = ctx.createGain(); env(g, t, peak, decay);
-    s.connect(f).connect(g).connect(master); s.start(t, (t * 7.3) % 1); s.stop(t + decay + 0.05);
+    src.connect(f).connect(g).connect(to); src.start(t, (t * 7.3) % 1); src.stop(t + decay + 0.05);
+    return g;
   };
   const snare = (t: number, v = 1) => {
-    noiseHit(t, "highpass", 1400, 0.55 * v, 0.17);
-    const o = ctx.createOscillator(); const g = ctx.createGain();
-    o.frequency.value = 190; env(g, t, 0.35 * v, 0.1); o.connect(g).connect(master); o.start(t); o.stop(t + 0.12);
+    const g = noiseHit(t, "bandpass", 1900, 0.6 * v, 0.14);
+    g.connect(gate);
+    const o = ctx.createOscillator(); const og = ctx.createGain();
+    o.frequency.value = 200; env(og, t, 0.4 * v, 0.08); o.connect(og).connect(master); o.start(t); o.stop(t + 0.1);
   };
-  const hat = (t: number, open = false, v = 1) => noiseHit(t, "highpass", 7500, (open ? 0.22 : 0.16) * v, open ? 0.22 : 0.045);
-  const crash = (t: number) => noiseHit(t, "highpass", 4500, 0.32, 1.4);
+  const ghost = (t: number) => noiseHit(t, "bandpass", 2200, 0.12, 0.05);
+  const hat = (t: number, open = false, v = 1) => noiseHit(t, "highpass", 6000, (open ? 0.2 : 0.13) * v, open ? 0.18 : 0.035);
+  const crash = (t: number) => noiseHit(t, "highpass", 3800, 0.28, 1.1);
   const tom = (t: number, f0: number) => {
     const o = ctx.createOscillator(); const g = ctx.createGain();
-    o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f0 * 0.5, t + 0.22);
-    env(g, t, 0.7, 0.28); o.connect(g).connect(master); o.start(t); o.stop(t + 0.3);
-  };
-  // A crunchy power chord: root, fifth and octave, sawtooth, through a soft clipper.
-  const drive = ctx.createWaveShaper();
-  const curve = new Float32Array(1024);
-  for (let i = 0; i < curve.length; i += 1) { const x = i / 511.5 - 1; curve[i] = Math.tanh(x * 6) * 0.9; }
-  drive.curve = curve;
-  const amp = ctx.createBiquadFilter(); amp.type = "lowpass"; amp.frequency.value = 2600;
-  const ampGain = ctx.createGain(); ampGain.gain.value = 0.16;
-  drive.connect(amp).connect(ampGain).connect(master);
-  const power = (t: number, root: number, dur: number) => {
-    for (const f of [root, root * 1.5, root * 2]) {
-      const o = ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = f;
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 0.006);
-      g.gain.setValueAtTime(0.5, t + dur * 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      o.connect(g).connect(drive); o.start(t); o.stop(t + dur + 0.02);
-    }
-  };
-  const clap = (t: number) => { for (const d of [0, 0.011, 0.022]) noiseHit(t + d, "bandpass", 1500, 0.32, 0.09); };
-  const synth = (t: number, freq: number, dur: number, type: OscillatorType, peak: number, cutoff: number) => {
-    const o = ctx.createOscillator(); o.type = type; o.frequency.value = freq;
-    const f = ctx.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = cutoff;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + 0.01);
-    g.gain.setValueAtTime(peak, t + dur * 0.6); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(f).connect(g).connect(master); o.start(t); o.stop(t + dur + 0.02);
+    o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f0 * 0.55, t + 0.2);
+    env(g, t, 0.75, 0.26); o.connect(g).connect(master); o.connect(gate); o.start(t); o.stop(t + 0.3);
   };
 
-  // 0–2.7s: nothing under the headline. Then drums alone at 90 BPM: three
-  // beats of groove, toms down the kit, a snare roll into the drop.
+  /** A two-operator FM voice: a modulator sine into the carrier's frequency. */
+  const fm = (t: number, freq: number, dur: number, o: { ratio: number; index: number; peak: number; attack?: number; indexEnd?: number; carrier?: OscillatorType }) => {
+    const car = ctx.createOscillator(); car.type = o.carrier ?? "sine"; car.frequency.value = freq;
+    const mod = ctx.createOscillator(); mod.frequency.value = freq * o.ratio;
+    const depth = ctx.createGain();
+    depth.gain.setValueAtTime(freq * o.index, t);
+    depth.gain.exponentialRampToValueAtTime(Math.max(1, freq * (o.indexEnd ?? o.index * 0.2)), t + dur);
+    mod.connect(depth).connect(car.frequency);
+    const g = ctx.createGain();
+    const attack = o.attack ?? 0.004;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(o.peak, t + attack);
+    g.gain.setValueAtTime(o.peak, t + Math.max(attack, dur * 0.55));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    car.connect(g).connect(master);
+    car.start(t); mod.start(t); car.stop(t + dur + 0.03); mod.stop(t + dur + 0.03);
+  };
+  const bass = (t: number, f: number, dur: number) => fm(t, f, dur, { ratio: 1, index: 2.6, indexEnd: 0.4, peak: 0.42 });
+  const brass = (t: number, f: number, dur: number, peak = 0.16) => fm(t, f, dur, { ratio: 1, index: 3.2, indexEnd: 1.4, peak, attack: 0.025 });
+  const epiano = (t: number, f: number, dur: number) => fm(t, f, dur, { ratio: 14, index: 0.9, indexEnd: 0.05, peak: 0.07 });
+  /** The 90s orchestra hit: a brassy FM chord over a low octave and a noise bite. */
+  const orchHit = (t: number, chord: number[], v = 1) => {
+    for (const f of [chord[0] / 2, ...chord, chord[0] * 2]) fm(t, f, 0.42, { ratio: 1, index: 4.5, indexEnd: 0.8, peak: 0.11 * v, attack: 0.003 });
+    for (const f of [chord[0] / 2, chord[0]]) {
+      const o = ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = f;
+      const g = ctx.createGain(); env(g, t, 0.12 * v, 0.38); o.connect(g).connect(master); o.connect(gate); o.start(t); o.stop(t + 0.42);
+    }
+    noiseHit(t, "bandpass", 1200, 0.35 * v, 0.09);
+  };
+
+  // 0–2.7s: nothing under the headline. Then a 90 BPM breakbeat: three beats
+  // of groove, toms down the kit, a snare roll into the drop.
   for (let b = SILENT_BEATS; b < SILENT_BEATS + 3; b += 1) {
     const t = b * INTRO_BEAT;
-    if ((b - SILENT_BEATS) % 2 === 0) kick(t); else snare(t);
-    kick(t + INTRO_BEAT * 0.75, 0.6);
-    hat(t); hat(t + INTRO_BEAT / 2, b === SILENT_BEATS + 2);
+    const k = b - SILENT_BEATS;
+    if (k === 0) kick(t);
+    if (k === 1) { snare(t); kick(t + INTRO_BEAT * 0.75, 0.8); }
+    if (k === 2) { kick(t, 0.9); kick(t + INTRO_BEAT * 0.5, 0.7); }
+    ghost(t + INTRO_BEAT * 0.75);
+    hat(t); hat(t + INTRO_BEAT / 2, k === 2);
   }
-  [300, 260, 220, 190].forEach((f, i) => tom((SILENT_BEATS + 3) * INTRO_BEAT + i * (INTRO_BEAT / 4), f));
-  for (let i = 0; i < 8; i += 1) snare((SILENT_BEATS + 4) * INTRO_BEAT + i * (INTRO_BEAT / 8), 0.35 + i * 0.09);
-  kick(INTRO_END - 0.05, 0.8);
+  [300, 250, 200, 160].forEach((f, i) => tom((SILENT_BEATS + 3) * INTRO_BEAT + i * (INTRO_BEAT / 4), f));
+  for (let i = 0; i < 8; i += 1) snare((SILENT_BEATS + 4) * INTRO_BEAT + i * (INTRO_BEAT / 8), 0.3 + i * 0.09);
 
-  // 6–30s: double time, 180 BPM, A minor (Am F C G, a chord a bar). Bar 9
-  // is a drum break; the riff joins at bar 3; the arpeggio lifts the end.
+  // 6–30s: double time (180), A minor: Am F C G, a chord a bar. Bar 9 is a
+  // break of drums and orchestra hits. The FM brass hook enters at bar 3.
   const ROOTS = [110, 87.31, 130.81, 98];
   const CHORDS = [[220, 261.63, 329.63], [174.61, 220, 261.63], [261.63, 329.63, 392], [196, 246.94, 293.66]];
-  /** The riff's rhythm in eighth notes across one bar: 1 = a chord. */
-  const RIFF = [1, 0, 1, 0, 0, 1, 1, 0];
+  /** The hook, an eighth note at a time across one bar per chord (0 = rest). */
+  const HOOK = [
+    [440, 0, 523.25, 0, 659.25, 587.33, 523.25, 0],
+    [440, 0, 392, 440, 0, 523.25, 0, 0],
+    [659.25, 0, 783.99, 0, 659.25, 587.33, 523.25, 0],
+    [587.33, 0, 493.88, 0, 392, 0, 0, 0],
+  ];
+  /** The slap-bass line in eighths: 1 = root, 2 = octave, 0 = rest. */
+  const BASS = [1, 0, 2, 1, 0, 1, 2, 0];
+  const E = BEAT / 2;
+  orchHit(INTRO_END, CHORDS[0]);
   for (let b = 0; b < FAST_BEATS; b += 1) {
     const t = INTRO_END + b * BEAT;
     const bar = Math.floor(b / 4);
     const inBar = b % 4;
     const brk = bar === 8;
-    const late = b >= FAST_BEATS - 20;
-    if (b % 16 === 0 || b === 36) crash(t);
-    kick(t);
-    if (inBar === 1 || inBar === 3) { snare(t); if (!brk) clap(t); }
-    hat(t, false, 1); hat(t + BEAT / 2, inBar === 3, 0.7);
+    const chord = CHORDS[bar % 4];
+    const root = ROOTS[bar % 4];
+    if (b % 16 === 0 && b > 0) crash(t);
+    // Breakbeat in double time: kick on 1, the "and" of 2 and 3; snare on 2 and 4.
+    if (inBar === 0 || inBar === 2) kick(t);
+    if (inBar === 1) kick(t + E, 0.75);
+    if (inBar === 1 || inBar === 3) snare(t);
+    if (inBar === 2) ghost(t + E);
+    hat(t, false, 1); hat(t + E, inBar === 3, 0.75);
     if (brk) {
-      if (inBar === 3) for (let i = 0; i < 4; i += 1) snare(t + (i * BEAT) / 4, 0.5 + i * 0.15);
+      if (inBar === 0 || inBar === 2) orchHit(t, chord, 0.9);
+      if (inBar === 3) for (let i = 0; i < 4; i += 1) snare(t + (i * BEAT) / 4, 0.45 + i * 0.15);
       continue;
     }
-    const root = ROOTS[bar % 4];
-    synth(t, root, BEAT * 0.45, "sawtooth", 0.2, 700);
-    synth(t + BEAT / 2, root * 2, BEAT * 0.4, "sawtooth", 0.14, 900);
-    if (bar >= 2) {
-      for (let e = 0; e < 2; e += 1) if (RIFF[inBar * 2 + e]) power(t + (e * BEAT) / 2, root, BEAT * 0.45);
-    } else if (inBar === 0 || inBar === 2) {
-      for (const f of CHORDS[bar % 4]) synth(t + BEAT / 2, f, BEAT * 0.35, "square", 0.05, 2400);
+    for (let e = 0; e < 2; e += 1) {
+      const n = BASS[inBar * 2 + e];
+      if (n) bass(t + e * E, root * n, E * 0.9);
     }
-    if (late) {
-      const chord = CHORDS[bar % 4];
-      for (let e = 0; e < 2; e += 1) synth(t + (e * BEAT) / 2, chord[(inBar * 2 + e) % 3] * 2, BEAT / 2.5, "square", 0.045, 3200);
+    if (inBar === 1 || inBar === 3) for (const f of chord) epiano(t + E, f, E * 1.6);
+    if (inBar === 0 && bar % 2 === 0 && bar > 0) orchHit(t, chord, 0.75);
+    if (bar >= 2) {
+      const line = HOOK[bar % 4];
+      const lift = bar >= 12 ? 2 : 1;
+      for (let e = 0; e < 2; e += 1) {
+        const f = line[inBar * 2 + e];
+        if (f) brass(t + e * E, f * lift, E * 0.95, lift > 1 ? 0.12 : 0.16);
+      }
     }
   }
+
   // The last hit, then nothing: the music stops dead at 30s.
+  orchHit(MUSIC_END - BEAT, CHORDS[0], 1.2);
   kick(MUSIC_END - BEAT, 1.1); crash(MUSIC_END - BEAT);
-  for (const f of CHORDS[0]) synth(MUSIC_END - BEAT, f, BEAT * 0.9, "square", 0.08, 3000);
-  power(MUSIC_END - BEAT, ROOTS[0], BEAT * 0.95);
 
   // CATTIPU's own click on every real press in the fast section.
   if (click) {
     for (const t of clicks) {
       if (t < INTRO_END || t >= MUSIC_END) continue;
-      const s = ctx.createBufferSource(); s.buffer = click;
-      const g = ctx.createGain(); g.gain.value = 0.9;
-      s.connect(g).connect(master); s.start(t);
+      const src = ctx.createBufferSource(); src.buffer = click;
+      const g = ctx.createGain(); g.gain.value = 0.8;
+      src.connect(g).connect(master); src.start(t);
     }
   }
 
-  // Hard silence from 30s: cut the master, with a 30ms fade so it does not pop.
-  master.gain.setValueAtTime(0.75, MUSIC_END - 0.03);
+  // Hard silence from 30s: cut the bus, with a 30ms fade so it does not pop.
+  master.gain.setValueAtTime(0.5, MUSIC_END - 0.03);
   master.gain.linearRampToValueAtTime(0, MUSIC_END);
   return ctx.startRendering();
 }

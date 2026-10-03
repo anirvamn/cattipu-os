@@ -150,7 +150,9 @@ try {
     };
     for (let f = 0; f < 50; f += 1) get(f);
     g.drawImage(await get(0), 0, 0);
-    const ac = new AudioContext({ sampleRate: audioBuffer.sampleRate });
+    // The soundtrack is rendered at 22 kHz for its period sound; playback
+    // resamples it to the device rate the encoder expects.
+    const ac = new AudioContext();
     await ac.resume();
     const dest = ac.createMediaStreamDestination();
     const src = ac.createBufferSource(); src.buffer = audioBuffer; src.connect(dest);

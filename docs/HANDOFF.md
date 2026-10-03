@@ -187,9 +187,12 @@ collaboration. None of this starts before the MVP is finished.
 
 - `docs/media/screens/`: current screenshots at 1600×900, captured from the
   running app (scenes staged through its own UI, stores and APIs).
-- `docs/media/cattipu-ad.mp4`: the 40-second 90s-style spot, with sound
-  (drums for 6s, a fast 150 BPM section to 30s with CATTIPU's own click on
-  every real press, then 10s of silence). `cattipu-ad.gif` is a silent
+- `docs/media/cattipu-ad.mp4`: the 40-second 90s-style spot, with sound.
+  The headline runs in silence, then a 90 BPM breakbeat, then a double-time
+  section to 30s, then 10s of silence. The music is original, in a mid-90s
+  PC style: FM-synth bass, brass and electric piano, orchestra hits and a
+  gated-reverb snare, rendered at 22 kHz through an 8-bit-style crusher.
+  CATTIPU's own click plays on every real press. `cattipu-ad.gif` is a silent
   teaser of its fast section, for the README.
 - How it is made, all in `scripts/promo/`:
   - `record.mjs <app url>` drives a running CATTIPU with real mouse and
