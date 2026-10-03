@@ -188,15 +188,13 @@ await clip("boot", async () => {
 }, { showCursor: false });
 await ready();
 
-// Demo projects. The games are built and launched now; Habit Tracker is
+// Demo projects. The game is built and launched now; Habit Tracker is
 // built on camera below.
 await makeProject("Star Forge", { "index.html": page("Star Forge"), "src/main.ts": src("shooter.ts") });
-await makeProject("Pixel Paint", { "index.html": page("Pixel Paint"), "src/main.ts": src("paint.ts") });
 const shooterUrl = await buildAndLaunch("Star Forge");
-const paintUrl = await buildAndLaunch("Pixel Paint");
 await makeProject("Habit Tracker", HABIT);
-launched.push(...(await ev(`return ['Star Forge', 'Pixel Paint', 'Habit Tracker'].map((n) => p.project(n).id);`)));
-log("demo apps", shooterUrl, paintUrl);
+launched.push(...(await ev(`return ['Star Forge', 'Habit Tracker'].map((n) => p.project(n).id);`)));
+log("demo app", shooterUrl);
 await ev(`p.closeAll();`);
 await b.wait(500);
 
@@ -349,7 +347,7 @@ await clip("notifications", async () => {
 });
 await ev(`p.$('button[aria-label^="Notifications"]').click();`);
 
-// ── 12–14. the apps CATTIPU built, running ───────────────────────────────
+// ── 12–13. the apps CATTIPU built, running ───────────────────────────────
 /** Centre of an element on a page that is not CATTIPU (a launched app). */
 const appAt = async (selector) => b.evaluate(`(() => { const r = document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }; })()`);
 if (habitUrl) {
@@ -367,9 +365,6 @@ if (habitUrl) {
 await b.send("Page.navigate", { url: shooterUrl });
 await b.wait(1500);
 await clip("shooter", async () => { await b.wait(3500); }, { showCursor: false });
-await b.send("Page.navigate", { url: paintUrl });
-await b.wait(300);
-await clip("paint", async () => { await b.wait(4500); }, { showCursor: false });
 
 log("done", OUT);
 } finally {

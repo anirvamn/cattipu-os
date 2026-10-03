@@ -336,10 +336,8 @@ const FULL: Crop = { x: 200, y: 0, w: 1200 };
   s = beat(4);
   clip("launch-run", around(go.x - 390, go.y + 40, 900), around(go.x - 740, go.y + 95, 420), s.at, s.dur, { from: Math.max(0, go.t - 0.4), speed: 0.8 });
 
-  s = beat(4);
-  clip("shooter", { x: 0, y: 0, w: 1200 }, { x: 200, y: 60, w: 1000 }, s.at, s.dur, { from: 0.5, speed: 1 });
-  s = beat(2);
-  clip("paint", { x: 200, y: 0, w: 1200 }, { x: 300, y: 60, w: 1000 }, s.at, s.dur, { from: 1.5, speed: 2.4 });
+  s = beat(6);
+  clip("shooter", { x: 0, y: 0, w: 1200 }, { x: 260, y: 80, w: 940 }, s.at, s.dur, { from: 0.5, speed: 1 });
   s = beat(4);
   clip("habit-app", { x: 200, y: 0, w: 1200 }, { x: 280, y: 40, w: 1040 }, s.at, s.dur, { from: 0.2, speed: 2.1 });
 
@@ -373,7 +371,7 @@ const FULL: Crop = { x: 200, y: 0, w: 1200 };
     (at) => still("desktop-dark", { x: 300, y: 0, w: 1300 }, { x: 360, y: 30, w: 1180 }, at, half),
     (at) => wallpaperFlash(3, at, half),
     (at) => still("canvas", { x: 200, y: 80, w: 1000 }, { x: 260, y: 120, w: 880 }, at, half),
-    (at) => clip("paint", { x: 200, y: 0, w: 1200 }, { x: 260, y: 30, w: 1080 }, at, half, { from: 4 }),
+    (at) => still("built-app-dark", { x: 300, y: 0, w: 1100 }, { x: 350, y: 30, w: 1000 }, at, half),
     (at) => still("launch", { x: 300, y: 120, w: 900 }, { x: 340, y: 150, w: 800 }, at, half),
     (at) => clip("shooter", { x: 300, y: 80, w: 1000 }, { x: 360, y: 110, w: 880 }, at, half, { from: 3.0 }),
   ];
@@ -382,7 +380,7 @@ const FULL: Crop = { x: 200, y: 0, w: 1200 };
 if (Math.abs(INTRO_END + beatsUsed * BEAT - MUSIC_END) > 1e-6) throw new Error(`the fast section is ${beatsUsed} beats, not ${FAST_BEATS}`);
 flash(MUSIC_END - 0.04);
 
-// ── 30–40s: silence. A pixel icon or two, then the line, the logo ──
+// ── 30–40s: silence. The rocket, then the line, the logo ──
 /** A single PixelForge icon, blown up, alone on a plain plate. */
 function iconPlate(name: string, plate: string, at: number, dur: number) {
   const el = layer("shot card");
@@ -396,31 +394,16 @@ function iconPlate(name: string, plate: string, at: number, dur: number) {
 }
 
 {
-  // The Forge anvil throws sparks on black.
-  const at = MUSIC_END + 0.35;
-  const { el, icon } = iconPlate("forge", "#000", at, 1.6);
-  sequence.push([icon, { y: [0, 6, 0, 6, 0] }, { at, duration: 1.5, ease: "linear" }]);
-  for (let i = 0; i < 14; i += 1) {
-    const spark = document.createElement("div");
-    spark.className = "spark";
-    el.appendChild(spark);
-    const angle = -Math.PI / 2 + (i / 13 - 0.5) * 2.4;
-    const dist = 120 + (i % 4) * 40;
-    const t0 = at + (i % 2 === 0 ? 0.08 : 0.68) + (i % 3) * 0.04;
-    sequence.push([spark, { x: [0, Math.cos(angle) * dist], y: [0, Math.sin(angle) * dist + 60], opacity: [1, 1, 0] }, { at: t0, duration: 0.5, ease: "easeOut" }]);
-  }
-}
-{
   // The Launch rocket lifts off on engineering paper.
-  const at = MUSIC_END + 1.95;
-  const { el, icon } = iconPlate("launch", "#E9DFC4", at, 1.6);
+  const at = MUSIC_END + 0.35;
+  const { el, icon } = iconPlate("launch", "#E9DFC4", at, 2.0);
   el.classList.add("paper");
-  sequence.push([icon, { y: [40, 30, -260] }, { at, duration: 1.55, ease: "easeIn" }]);
+  sequence.push([icon, { y: [40, 30, -260] }, { at, duration: 1.95, ease: "easeIn" }]);
 }
 {
   // "What will we build" typed on a white page, the line left hanging.
-  const at = MUSIC_END + 3.55;
-  const dur = 3.0;
+  const at = MUSIC_END + 2.35;
+  const dur = 3.4;
   const el = layer("shot card page");
   const line = document.createElement("div");
   line.className = "page-text";
@@ -440,8 +423,8 @@ function iconPlate(name: string, plate: string, at: number, dur: number) {
   cut(el, at, dur);
 }
 {
-  const at = MUSIC_END + 6.55;
-  const dur = 1.25;
+  const at = MUSIC_END + 5.75;
+  const dur = 1.4;
   const el = layer("shot card");
   el.style.background = "#000";
   const t = document.createElement("div");
@@ -461,7 +444,7 @@ function iconPlate(name: string, plate: string, at: number, dur: number) {
   cut(el, at, dur);
 }
 {
-  const at = MUSIC_END + 7.8;
+  const at = MUSIC_END + 7.15;
   const dur = TOTAL - at;
   const el = layer("shot end-plate");
   const logo = document.createElement("img");
