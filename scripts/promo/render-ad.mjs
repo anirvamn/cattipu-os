@@ -82,8 +82,8 @@ html, body { margin: 0; background: #000; }
 .card-stack { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .card-text { font-family: "Px437", monospace; letter-spacing: 1px; text-align: center; padding: 0 28px; line-height: 1;
   text-shadow: 2px 0 rgba(255,60,60,.55), -2px 0 rgba(60,200,255,.35); }
-.headline { position: absolute; left: 0; top: 200px; white-space: nowrap; font-family: "Px437", monospace;
-  font-size: 64px; color: #ff1e1e; }
+.headline { position: absolute; left: 0; top: 218px; white-space: nowrap; font-family: "Px437", monospace;
+  font-size: 44px; line-height: 1; color: #ff1e1e; }
 .fly { position: absolute; left: 304px; top: 224px; width: 32px; height: 32px; image-rendering: pixelated; opacity: 0; }
 .badge { width: 330px; height: 330px; border-radius: 50%; background: #C6971F; color: #002A73; display: grid;
   place-items: center; text-align: center; font-family: "Px437", monospace; font-size: 40px; line-height: 1.1;

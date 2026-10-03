@@ -57,12 +57,12 @@ const INTRO_BPM = 90;
 const FAST_BPM = 180;
 const INTRO_BEAT = 60 / INTRO_BPM; // 0.667s
 const BEAT = 60 / FAST_BPM; // 0.333s: the same pulse in double time
-/** Four beats of silence under the headline, then five of drums. */
-const SILENT_BEATS = 4;
-const INTRO_END = 9 * INTRO_BEAT; // 6.0s
+/** Six beats of silence under the headline, then five of drums. */
+const SILENT_BEATS = 6;
+const INTRO_END = (SILENT_BEATS + 5) * INTRO_BEAT; // 7.33s
 const FAST_BEATS = 72;
-const MUSIC_END = INTRO_END + FAST_BEATS * BEAT; // 30.0s
-const TOTAL = MUSIC_END + 10; // 40.0s, the last 10s silent
+const MUSIC_END = INTRO_END + FAST_BEATS * BEAT; // 31.33s
+const TOTAL = MUSIC_END + 10; // 41.33s, the last 10s silent
 
 // ── building blocks ──────────────────────────────────────────────────────
 interface Crop { x: number; y: number; w: number }
@@ -236,14 +236,22 @@ function headline(text: string, at: number, dur: number) {
   t.className = "headline";
   t.textContent = text;
   el.appendChild(t);
-  // Streaks in fast, slows to read, streaks out — blurred while it moves.
+  // One move: it streaks in from the right, smeared by its own speed,
+  // decelerates, and settles centred and sharp — then holds to be read.
+  const TRAVEL = 0.68;
   const pos = motionValue(0);
   pos.on("change", (v) => {
-    const x = v < 0.25 ? W - (W + 120) * (v / 0.25) * 0.55 : v < 0.75 ? W - (W + 120) * (0.55 + ((v - 0.25) / 0.5) * 0.35) : W - (W + 120) * (0.9 + ((v - 0.75) / 0.25) * 0.9);
-    const speed = v < 0.25 || v > 0.75 ? 1 : 0.25;
+    const startX = W + 30;
+    const endX = (W - t.offsetWidth) / 2;
+    const k = Math.min(1, v / TRAVEL);
+    const eased = 1 - Math.pow(1 - k, 3);
+    const speed = k < 1 ? 3 * Math.pow(1 - k, 2) : 0; // d(eased)/dk, 3 → 0
+    const x = startX + (endX - startX) * eased;
     t.style.transform = `translateX(${x.toFixed(1)}px)`;
-    t.style.filter = `blur(${(speed * 2.2).toFixed(2)}px)`;
-    t.style.textShadow = `${(speed * 18).toFixed(0)}px 0 6px rgba(255,30,30,.45), ${(speed * 36).toFixed(0)}px 0 10px rgba(255,30,30,.25)`;
+    t.style.filter = `blur(${(Math.min(1, speed) * 2.4).toFixed(2)}px)`;
+    t.style.textShadow = speed > 0.02
+      ? `${(speed * 14).toFixed(0)}px 0 6px rgba(255,30,30,.5), ${(speed * 30).toFixed(0)}px 0 10px rgba(255,30,30,.28)`
+      : "2px 0 rgba(255,60,60,.55), -2px 0 rgba(60,200,255,.35)";
   });
   sequence.push([pos, [0, 1], { at, duration: dur, ease: "linear" }]);
   cut(el, at, dur);
@@ -270,7 +278,7 @@ function flyingIcons(at: number, dur: number) {
   cut(el, at, dur);
 }
 
-headline("What will we build today?", 0.1, SILENT_BEATS * INTRO_BEAT - 0.12);
+headline("What will we build today?", 0.05, SILENT_BEATS * INTRO_BEAT - 0.07);
 flyingIcons(SILENT_BEATS * INTRO_BEAT, INTRO_END - SILENT_BEATS * INTRO_BEAT);
 
 // ── 6–30s: double time. Every cut on the beat ───────────────────────────────────
