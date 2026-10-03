@@ -192,6 +192,22 @@ apps only, and data lives in the browser until projects move to disk.
 Full plan: [`docs/ROADMAP.md`](docs/ROADMAP.md). Picking this up as a new
 contributor or AI session? Start with [`docs/HANDOFF.md`](docs/HANDOFF.md).
 
+## Contributing
+
+Contributions are welcome. CATTIPU is at MVP stage and there is plenty to
+do, from small fixes to whole roadmap sprints.
+
+- Read [`CONTRIBUTING.md`](CONTRIBUTING.md) for setup, workflow and the
+  ground rules.
+- Pick up an issue labelled
+  [`good first issue`](https://github.com/anirvamn/cattipu-os/labels/good%20first%20issue)
+  or [`help wanted`](https://github.com/anirvamn/cattipu-os/labels/help%20wanted).
+- Read [`docs/HANDOFF.md`](docs/HANDOFF.md) for where things stand and what
+  comes next.
+- Report security issues privately; see [`SECURITY.md`](SECURITY.md).
+
+Everyone involved follows the [Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## License
 
 MIT, see [LICENSE](LICENSE). Bundled fonts carry their own licences in

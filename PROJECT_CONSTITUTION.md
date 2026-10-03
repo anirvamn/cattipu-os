@@ -213,6 +213,10 @@ git config user.name "anirva09"
 git config user.email "anirvavjit2023@gmail.com"
 ```
 
+This identity rule binds the owner and any AI agent working for the owner.
+**Outside contributors commit under their own name and email** and send
+pull requests; see `CONTRIBUTING.md`.
+
 ### Forbidden Git attribution
 
 Never add:
