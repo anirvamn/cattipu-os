@@ -87,7 +87,7 @@ conversations. Right-click the desktop for folders, window arrangement
 Requires **Node 20+** and npm.
 
 ```bash
-git clone https://github.com/anirva09/cattipu-os.git
+git clone https://github.com/anirvamn/cattipu-os.git
 cd cattipu-os
 npm install
 npm run dev

@@ -3,9 +3,9 @@
 
 Status: PERMANENT / CANONICAL / NORMATIVE
 Project: CATTIPU OS
-Repository: https://github.com/anirva09/cattipu-os
+Repository: https://github.com/anirvamn/cattipu-os
 Canonical Branch: origin/main
-Repository Owner: anirva09
+Repository Owner: anirvamn (GitHub account; commits are authored as anirva09, see section 3)
 
 This document is the permanent institutional memory and operating constitution
 for CATTIPU OS.
@@ -160,7 +160,7 @@ cleaner, or easier to implement.
 Repository:
 
 ```text
-https://github.com/anirva09/cattipu-os
+https://github.com/anirvamn/cattipu-os
 ```
 
 Canonical production branch:
@@ -169,11 +169,14 @@ Canonical production branch:
 origin/main
 ```
 
-Repository owner:
+Repository owner (GitHub account, renamed from `anirva09`; the old URL
+redirects):
 
 ```text
-anirva09
+anirvamn
 ```
+
+Commits are still authored as `anirva09`; see section 3.
 
 The current `origin/main` HEAD is the baseline.
 Do not rely on old commit hashes after main advances.
@@ -3045,7 +3048,7 @@ You are now an engineer working on CATTIPU OS.
 Repository:
 
 ```text
-https://github.com/anirva09/cattipu-os
+https://github.com/anirvamn/cattipu-os
 ```
 
 Before making any change:

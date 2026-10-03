@@ -1,9 +1,9 @@
 /**
  * CATTIPU OS — a 90s-style TV spot, built with Motion (framer-motion).
  *
- *   0–6s    drums only (100 BPM): a red headline streaks across black, then
- *           CATTIPU's pixel app icons fly out of the screen
- *   6–30s   the beat goes fast (150 BPM): hard cuts, every one on the beat,
+ *   0–2.7s  silence: a red headline streaks across black
+ *   2.7–6s  drums enter (90 BPM) as CATTIPU's pixel app icons fly out
+ *   6–30s   double time (the same pulse at 180): hard cuts, every one on the beat,
  *           of REAL recorded CATTIPU motion (scripts/promo/record.mjs) —
  *           typing, clicks, menus, builds, launches, the apps it built —
  *           with CATTIPU's own click sound on every real cursor press
@@ -53,12 +53,15 @@ let loading: Promise<unknown>[] = [];
 const clicks: number[] = [];
 
 // ── tempo ────────────────────────────────────────────────────────────────
-const INTRO_BPM = 100;
-const FAST_BPM = 150;
-const INTRO_BEAT = 60 / INTRO_BPM; // 0.6s
-const BEAT = 60 / FAST_BPM; // 0.4s
-const INTRO_END = 10 * INTRO_BEAT; // 6.0s
-const MUSIC_END = INTRO_END + 60 * BEAT; // 30.0s
+const INTRO_BPM = 90;
+const FAST_BPM = 180;
+const INTRO_BEAT = 60 / INTRO_BPM; // 0.667s
+const BEAT = 60 / FAST_BPM; // 0.333s: the same pulse in double time
+/** Four beats of silence under the headline, then five of drums. */
+const SILENT_BEATS = 4;
+const INTRO_END = 9 * INTRO_BEAT; // 6.0s
+const FAST_BEATS = 72;
+const MUSIC_END = INTRO_END + FAST_BEATS * BEAT; // 30.0s
 const TOTAL = MUSIC_END + 10; // 40.0s, the last 10s silent
 
 // ── building blocks ──────────────────────────────────────────────────────
@@ -267,22 +270,22 @@ function flyingIcons(at: number, dur: number) {
   cut(el, at, dur);
 }
 
-headline("What will we build today?", 0.15, 4.05);
-flyingIcons(4.2, INTRO_END - 4.2);
+headline("What will we build today?", 0.1, SILENT_BEATS * INTRO_BEAT - 0.12);
+flyingIcons(SILENT_BEATS * INTRO_BEAT, INTRO_END - SILENT_BEATS * INTRO_BEAT);
 
-// ── 6–30s: fast. Every cut on the beat ───────────────────────────────────
+// ── 6–30s: double time. Every cut on the beat ───────────────────────────────────
 let beatsUsed = 0;
 const beat = (n: number) => { const at = INTRO_END + beatsUsed * BEAT; beatsUsed += n; return { at, dur: n * BEAT }; };
 /** The widest 4:3 crop of a 16:9 screen. */
 const FULL: Crop = { x: 200, y: 0, w: 1200 };
 
 {
-  let s = beat(3);
+  let s = beat(4);
   const bootCrop = around(800, 470, 760);
   clip("boot", bootCrop, zoomIn(bootCrop, 0.8), s.at, s.dur, { from: 2.6, speed: 1.4 });
   flash(s.at);
 
-  s = beat(3);
+  s = beat(4);
   const dbl = pressOf("desktop-hand", 0);
   const handCrop = around(dbl.x + 40, dbl.y + 30, 300);
   clip("desktop-hand", around(dbl.x + 60, dbl.y + 60, 520), handCrop, s.at, s.dur, { from: 0.6, speed: 1.6, hand: true });
@@ -292,27 +295,27 @@ const FULL: Crop = { x: 200, y: 0, w: 1200 };
   wallpaperFlash(3, s.at + BEAT / 2, BEAT / 2);
 
   const typeClick = pressOf("architect-type", 0);
-  s = beat(3);
+  s = beat(4);
   // The typed text starts at the field's left edge (about x 320, y 277).
   clip("architect-type", around(typeClick.x - 40, typeClick.y + 10, 440), around(typeClick.x + 20, typeClick.y + 5, 340), s.at, s.dur, { from: typeClick.t - 0.1, speed: 1.9 });
 
   const gen = pressOf("architect-type", 1);
-  s = beat(2);
+  s = beat(3);
   clip("architect-type", around(gen.x - 30, gen.y + 10, 300), around(gen.x - 10, gen.y + 5, 220), s.at, s.dur, { from: gen.t - 0.55, speed: 1 });
 
   s = beat(2);
   clip("architect-type", { x: 120, y: 60, w: 1200 }, { x: 200, y: 120, w: 1000 }, s.at, s.dur, { from: gen.t + 1.2, speed: 3.5 });
 
-  s = beat(2);
+  s = beat(3);
   card([{ text: "CATTIPU helps you", size: 26, color: "#f2ead6" }, { text: "plan", size: 120, color: "#c46bd1" }], s.at, s.dur);
   flash(s.at);
 
   const right = pressOf("menu", 0);
-  s = beat(3);
+  s = beat(4);
   clip("menu", around(right.x + 120, right.y + 110, 520), around(right.x + 140, right.y + 130, 440), s.at, s.dur, { from: right.t - 0.15, speed: 1.75 });
 
   const max = pressOf("maximize", 0);
-  s = beat(2);
+  s = beat(3);
   clip("maximize", around(max.x - 20, max.y + 20, 240), around(max.x - 10, max.y + 10, 170), s.at, s.dur, { from: max.t - 0.45, speed: 1.2 });
 
   s = beat(2);
@@ -322,22 +325,22 @@ const FULL: Crop = { x: 200, y: 0, w: 1200 };
   still("explorer", { x: 100, y: 80, w: 640 }, { x: 110, y: 200, w: 520 }, s.at, s.dur);
 
   const build = pressOf("forge-build", 0);
-  s = beat(3);
+  s = beat(4);
   clip("forge-build", around(build.x - 380, build.y + 40, 900), around(build.x - 720, build.y + 80, 440), s.at, s.dur, { from: Math.max(0, build.t - 0.4), speed: 0.85 });
 
-  s = beat(2);
+  s = beat(3);
   card([{ text: "build", size: 130, color: "#ff3b30" }], s.at, s.dur);
   flash(s.at);
 
   const go = pressOf("launch-run", 0);
-  s = beat(3);
+  s = beat(4);
   clip("launch-run", around(go.x - 390, go.y + 40, 900), around(go.x - 740, go.y + 95, 420), s.at, s.dur, { from: Math.max(0, go.t - 0.4), speed: 0.8 });
 
-  s = beat(3);
+  s = beat(4);
   clip("shooter", { x: 0, y: 0, w: 1200 }, { x: 200, y: 60, w: 1000 }, s.at, s.dur, { from: 0.5, speed: 1 });
   s = beat(2);
   clip("paint", { x: 200, y: 0, w: 1200 }, { x: 300, y: 60, w: 1000 }, s.at, s.dur, { from: 1.5, speed: 2.4 });
-  s = beat(3);
+  s = beat(4);
   clip("habit-app", { x: 200, y: 0, w: 1200 }, { x: 280, y: 40, w: 1040 }, s.at, s.dur, { from: 0.2, speed: 2.1 });
 
   s = beat(2);
@@ -376,7 +379,7 @@ const FULL: Crop = { x: 200, y: 0, w: 1200 };
   ];
   items.forEach((add, i) => add(s.at + i * half));
 }
-if (Math.abs(INTRO_END + beatsUsed * BEAT - MUSIC_END) > 1e-6) throw new Error(`the fast section is ${beatsUsed} beats, not 60`);
+if (Math.abs(INTRO_END + beatsUsed * BEAT - MUSIC_END) > 1e-6) throw new Error(`the fast section is ${beatsUsed} beats, not ${FAST_BEATS}`);
 flash(MUSIC_END - 0.04);
 
 // ── 30–40s: silence. One pixel icon at a time, then the line, the logo ──
@@ -481,7 +484,7 @@ function iconPlate(name: string, plate: string, at: number, dur: number) {
   tag.textContent = "The operating system for software creators.";
   const url = document.createElement("div");
   url.className = "end-url";
-  url.textContent = "github.com/anirva09/cattipu-os";
+  url.textContent = "github.com/anirvamn/cattipu-os";
   el.append(logo, name, tag, url);
   sequence.push([logo, { scale: [0.6, 1], opacity: [0, 1] }, { at, duration: 0.4, ease: "easeOut" }]);
   sequence.push([name, { opacity: [0, 1], y: [12, 0] }, { at: at + 0.35, duration: 0.3 }]);
@@ -596,34 +599,34 @@ async function renderAudio(): Promise<AudioBuffer> {
     o.connect(f).connect(g).connect(master); o.start(t); o.stop(t + dur + 0.02);
   };
 
-  // 0–6s: drums alone, 100 BPM, ending in a tom fill.
-  for (let b = 0; b < 8; b += 1) {
+  // 0–2.7s: nothing under the headline. Then drums alone at 90 BPM: three
+  // beats of groove, toms down the kit, a snare roll into the drop.
+  for (let b = SILENT_BEATS; b < SILENT_BEATS + 3; b += 1) {
     const t = b * INTRO_BEAT;
-    if (b % 2 === 0) kick(t); else snare(t);
-    if (b % 4 === 2) kick(t + INTRO_BEAT * 0.5, 0.7);
-    hat(t); hat(t + INTRO_BEAT / 2, b % 4 === 3);
+    if ((b - SILENT_BEATS) % 2 === 0) kick(t); else snare(t);
+    kick(t + INTRO_BEAT * 0.75, 0.6);
+    hat(t); hat(t + INTRO_BEAT / 2, b === SILENT_BEATS + 2);
   }
-  // Into the drop: toms down the kit, then a snare roll that climbs.
-  [300, 260, 220, 190].forEach((f, i) => tom(8 * INTRO_BEAT + i * (INTRO_BEAT / 4), f));
-  for (let i = 0; i < 8; i += 1) snare(9 * INTRO_BEAT + i * (INTRO_BEAT / 8), 0.35 + i * 0.09);
+  [300, 260, 220, 190].forEach((f, i) => tom((SILENT_BEATS + 3) * INTRO_BEAT + i * (INTRO_BEAT / 4), f));
+  for (let i = 0; i < 8; i += 1) snare((SILENT_BEATS + 4) * INTRO_BEAT + i * (INTRO_BEAT / 8), 0.35 + i * 0.09);
   kick(INTRO_END - 0.05, 0.8);
 
-  // 6–30s: fast, 150 BPM, A minor (Am F C G, a chord a bar). Bar 8 is a
-  // drum break; the riff joins at bar 3; the arpeggio lifts the last bars.
+  // 6–30s: double time, 180 BPM, A minor (Am F C G, a chord a bar). Bar 9
+  // is a drum break; the riff joins at bar 3; the arpeggio lifts the end.
   const ROOTS = [110, 87.31, 130.81, 98];
   const CHORDS = [[220, 261.63, 329.63], [174.61, 220, 261.63], [261.63, 329.63, 392], [196, 246.94, 293.66]];
   /** The riff's rhythm in eighth notes across one bar: 1 = a chord. */
   const RIFF = [1, 0, 1, 0, 0, 1, 1, 0];
-  for (let b = 0; b < 60; b += 1) {
+  for (let b = 0; b < FAST_BEATS; b += 1) {
     const t = INTRO_END + b * BEAT;
     const bar = Math.floor(b / 4);
     const inBar = b % 4;
-    const brk = bar === 7;
-    const late = b >= 40;
-    if (b % 16 === 0 || b === 32) crash(t);
+    const brk = bar === 8;
+    const late = b >= FAST_BEATS - 20;
+    if (b % 16 === 0 || b === 36) crash(t);
     kick(t);
     if (inBar === 1 || inBar === 3) { snare(t); if (!brk) clap(t); }
-    for (let s = 0; s < 4; s += 1) hat(t + (s * BEAT) / 4, s === 2 && inBar === 3, s % 2 === 0 ? 1 : 0.7);
+    hat(t, false, 1); hat(t + BEAT / 2, inBar === 3, 0.7);
     if (brk) {
       if (inBar === 3) for (let i = 0; i < 4; i += 1) snare(t + (i * BEAT) / 4, 0.5 + i * 0.15);
       continue;
@@ -632,13 +635,13 @@ async function renderAudio(): Promise<AudioBuffer> {
     synth(t, root, BEAT * 0.45, "sawtooth", 0.2, 700);
     synth(t + BEAT / 2, root * 2, BEAT * 0.4, "sawtooth", 0.14, 900);
     if (bar >= 2) {
-      for (let e = 0; e < 2; e += 1) if (RIFF[inBar * 2 + e]) power(t + (e * BEAT) / 2, root, BEAT * 0.42);
+      for (let e = 0; e < 2; e += 1) if (RIFF[inBar * 2 + e]) power(t + (e * BEAT) / 2, root, BEAT * 0.45);
     } else if (inBar === 0 || inBar === 2) {
       for (const f of CHORDS[bar % 4]) synth(t + BEAT / 2, f, BEAT * 0.35, "square", 0.05, 2400);
     }
     if (late) {
       const chord = CHORDS[bar % 4];
-      for (let s = 0; s < 4; s += 1) synth(t + (s * BEAT) / 4, chord[s % 3] * 2, BEAT / 4.5, "square", 0.04, 3200);
+      for (let e = 0; e < 2; e += 1) synth(t + (e * BEAT) / 2, chord[(inBar * 2 + e) % 3] * 2, BEAT / 2.5, "square", 0.045, 3200);
     }
   }
   // The last hit, then nothing: the music stops dead at 30s.
