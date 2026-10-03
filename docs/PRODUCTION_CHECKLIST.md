@@ -9,7 +9,7 @@ box, not a judgement call.
 
 ```bash
 git status --short          # empty
-git shortlog -sne           # only anirva09 <anirvavjit2023@gmail.com>
+git shortlog -sne           # owner: anirvamn (earlier: anirva09) <anirvavjit2023@gmail.com>; contributors via merged pull requests only
 ```
 
 Commits carry no `Co-authored-by` and no AI attribution. `git log -1

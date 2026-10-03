@@ -20,4 +20,8 @@ If it's visual, a screenshot helps a lot.
 - OS:
 - Browser:
 - Node version (`node -v`):
-- AI provider, if relevant (Ollama model / Claude):
+- RAM and GPU (helps with AI speed problems):
+- AI provider and model, if relevant:
+
+If the problem is that something was **confusing** rather than broken,
+that's a valid report too. Say what you expected to find and where.

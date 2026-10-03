@@ -7,6 +7,10 @@ Repository: https://github.com/anirvamn/cattipu-os
 Canonical Branch: origin/main
 Repository Owner: anirvamn (GitHub account; commits are authored as anirvamn, see section 3)
 
+> **Contributing a pull request?** You don't need to read this document.
+> [`CONTRIBUTING.md`](CONTRIBUTING.md) has every rule that matters for a
+> pull request. This constitution binds the maintainer and AI agents.
+
 This document is the permanent institutional memory and operating constitution
 for CATTIPU OS.
 

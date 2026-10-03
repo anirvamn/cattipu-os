@@ -4,12 +4,25 @@ The single document to read before continuing CATTIPU. Written for a new AI
 session or a new contributor who has none of the previous conversations.
 It summarises; it does not replace the authorities listed in §2.
 
-Status at writing: **MVP level, local-first**, on `main` at `118a309`
-(MVP-09). Next sprint: **Q (MVP-10)**.
+Status at writing: **MVP level, local-first**. MVP-09 is the latest
+shipped sprint. Next sprint: **Q (MVP-10)**.
+
+Human contributors: you don't need this file. [`CONTRIBUTING.md`](../CONTRIBUTING.md)
+is enough to make a pull request.
 
 ---
 
 ## 1. What CATTIPU is
+
+**The owner's agenda, which every sprint serves:** anyone should be able to
+turn an idea into a working app on their own computer, without feeling
+overwhelmed. Easy first, runs locally, the project remembers, any model.
+The north-star test: someone who has never written code installs CATTIPU
+with one click, types one sentence, and has their app running on their own
+laptop within minutes, without help. Design for the minimum machine:
+Windows 10/11, 8 GB RAM, no dedicated GPU. When a decision trades power for
+simplicity, choose simplicity for the beginner path and keep the power one
+step away. The full statement is in `docs/ROADMAP.md`.
 
 CATTIPU OS is an operating environment for building software, made to feel
 like a 1998 engineering workstation. The **Project** is the main object, not
@@ -41,6 +54,9 @@ decision by the owner (see §8).
 4. The sprint reports `docs/MVP-02_REPORT.md` … `docs/MVP-09_REPORT.md`.
    Each ends with known P2/P3 issues.
 5. This file, for where things stand and what comes next.
+
+That list is for AI sessions and the maintainer. Outside contributors only
+need `CONTRIBUTING.md`; `docs/README.md` maps every document.
 
 ## 3. How a person uses CATTIPU today
 
@@ -136,37 +152,51 @@ first.
 | **Q** | MVP-10 · AI like ChatGPT | Streaming answers end to end; remove the 1,024-token cap; set the context window; an assistant prompt that clarifies before assuming; model and provider picker; stop key; Claude verified; seam for OpenAI and Gemini | "I'd like to build a website" gets a structured, complete answer that starts arriving within seconds |
 | **R** | MVP-11 · Projects on disk | Server-side project storage behind the existing stores (one owner, no second store); migrate localStorage; export and import; safe paths | Clearing the browser loses nothing; a project larger than the localStorage cap works |
 | **S** | MVP-12 · Idea → plan | An AI requirements interview produces a typed, validated spec; the user approves it; saved to Project Memory and Architect; seeds only as a labelled offline fallback | Three different ideas give three sensible plans |
-| **T** | MVP-13 · Real apps | React + TS starter; safe npm packages (no lifecycle scripts, containment kept) | A React app with a small library builds and launches |
+| **T** | MVP-13 · Real apps | React + TS starters that the AI customises instead of writing from blank; safe npm packages (no lifecycle scripts, containment kept) | A React app with a small library builds and launches |
 | **U** | MVP-14 · AI builds it | Agent loop: AI writes files → Forge builds → AI fixes from diagnostics (capped) → Launch runs; diffs to accept or undo; live preview window | An approved plan becomes a running app without manual fixes in most demo cases |
 | **V** | MVP-15 · Easy to use | One guided Create flow (Idea → Questions → Plan → Build → Preview) with one obvious key per step, plus first-run help; left rail untouched | A first-time user builds an app unaided |
 | **W** | MVP-16 · Consistency sweep | Fonts locked to role tokens everywhere; responsive fixes at 1366–1920 (and 1536×864); truthful BUILD and MEMORY labels; left rail untouched | Audit table clean, tests enforce it |
 | **X** | MVP-17 · Showcase | 3–4 demo projects, "Export app" zip, final README, demo script, full regression | The MVP definition in §1 holds for every demo idea |
 
-The owner has these as session chips in Claude Code desktop. Without them,
-paste the row above plus §2 and §6 into a new session.
+**Phase 3: production on the user's own machine.** "Production" means an
+installed desktop app people trust with their work, not a cloud service.
+Same rules: one session, one commit, in order.
 
-## 8. The vision after the MVP
+| Session | Sprint | Goal | Done when |
+|---|---|---|---|
+| **Y** | MVP-18 · Desktop app | Tauri shell: native window, CATTIPU's server and Node runtime bundled as a sidecar, projects in `Documents\CATTIPU`, single instance, tray; the existing owners kept (a host change, not a rewrite) | CATTIPU starts from a desktop icon on a machine without Node, with no terminal |
+| **Z** | MVP-19 · One-click install and models | Signed Windows installer; first-run setup checks RAM, GPU and disk, then installs or manages the local model runtime and downloads the right model with progress; bring-your-own key (Claude, OpenAI, Gemini) stored in the OS keychain; local stays the default | On a clean 8 GB Windows laptop: install to first AI answer in under 10 minutes, no terminal, no manual model setup |
+| **AA** | MVP-20 · Starters and reliability | A library of tested starters (todo, portfolio, landing page, shop, dashboard, small game) the AI customises; an evaluation script that runs ~30 fixed ideas through plan → build → fix → launch and records the success rate | At least 80% of the evaluation ideas run without manual fixes on the default local model, and the score is in the sprint report |
+| **AB** | MVP-21 · Safety and privacy | Launched apps confined (loopback only, their own folder); every AI change reviewable and undoable; keys never in localStorage, logs or memory; no telemetry; a written threat model | The security checklist passes, and the full idea-to-app flow works with the network disabled |
+| **AC** | MVP-22 · Updates and recovery | Auto-update with rollback; automatic project backups; crash recovery that restores projects and windows; a local log file users can attach to bug reports | Killing CATTIPU mid-build loses nothing, and an update can be rolled back |
+| **AD** | 1.0 · Release | Performance on the minimum machine; keyboard and readability pass; in-app guide and first-run tour; signed GitHub release with checksums; full regression | Five people who don't code each build an app unaided on their own laptops |
 
-**A native Windows application.** CATTIPU becomes an installable desktop app
-(Tauri is the intended shell, as `docs/ROADMAP.md` records): its own native
-window instead of a browser tab, projects in a real folder on disk, builds and
-launched apps as properly managed native processes, system tray and Windows
-notifications, an installer (MSI/MSIX) with auto-update, and offline-first
-behaviour. The existing `OsObject` filesystem model and the Forge/Launch
-process boundaries were designed so this is a host change, not a rewrite.
+The owner has Q → X as session chips in Claude Code desktop. For any sprint
+without a chip, paste its row plus §1, §2 and §6 into a new session.
 
-**LLMs as real collaborators.** One provider-adapter layer for Claude,
-OpenAI, Gemini and local models (Ollama, possibly bundled or managed by
-CATTIPU), with streaming, a model picker and per-project settings. Project
-Memory becomes the shared brain every model reads (decisions, specs,
-builds, launches), so switching models never loses context. The agent loop
-(sprint U) grows into multi-step work with explicit permissions:
-the AI proposes, CATTIPU executes through its own owners, and the user
-approves. The AI never runs arbitrary commands.
+## 8. The vision behind Phase 3
 
-**Later.** Live (deploy a launched app, logs and runtime inspection),
-extensions and a marketplace (templates, blueprints, PixelForge packs),
-collaboration. None of this starts before the MVP is finished.
+**A native Windows application (sprints Y, Z, AC).** CATTIPU becomes an
+installable desktop app with Tauri as the shell: its own window instead of a
+browser tab, projects in a real folder on disk, builds and launched apps as
+properly managed native processes, tray and Windows notifications, a signed
+installer with auto-update, and offline-first behaviour. The existing
+`OsObject` filesystem model and the Forge/Launch process boundaries were
+designed so this is a host change, not a rewrite.
+
+**LLMs as real collaborators (sprints Q, U, Z).** One provider-adapter layer
+for local models and for Claude, OpenAI and Gemini. Local is the default,
+picked to fit the user's hardware; a bring-your-own key unlocks a frontier
+model for harder work. Project Memory is the shared brain every model reads
+(decisions, specs, builds, launches), so switching models never loses
+context. The harness matters as much as the model: tested starters (AA),
+the build-and-fix loop (U) and Project Memory are what make a small local
+model dependable. The AI proposes; CATTIPU executes through its own owners;
+the user approves. The AI never runs arbitrary commands.
+
+**After 1.0.** Live (deploy a launched app, logs and runtime inspection), a
+marketplace for starters, blueprints and icon packs, macOS and Linux, and
+collaboration. None of this starts before 1.0.
 
 ## 9. Known issues carried forward
 

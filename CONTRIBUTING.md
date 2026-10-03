@@ -1,88 +1,105 @@
 # Contributing to CATTIPU OS
 
-Thanks for your interest. CATTIPU OS is an MVP-stage, local-first operating
-environment for building software, and contributions of every size are
-welcome: bug fixes, tests, docs, features, and design work that respects the
-visual identity.
+Thanks for being here. CATTIPU's agenda is simple: **anyone should be able
+to turn an idea into a working app on their own computer, without feeling
+overwhelmed.** Contributing should feel the same way, so this page is all
+you need to read before your first pull request.
 
-## Start here
+## Your first contribution in four steps
 
-1. **[`README.md`](README.md)**: what CATTIPU is and how to run it.
-2. **[`docs/HANDOFF.md`](docs/HANDOFF.md)**: where the project stands, how
-   each part works, and the ordered roadmap (sprints Q → X).
-3. **[`PROJECT_CONSTITUTION.md`](PROJECT_CONSTITUTION.md)**: the
-   architecture rules. Long, but it explains *why* the code is shaped the way
-   it is.
-4. **[`docs/DESIGN_CONSTITUTION.md`](docs/DESIGN_CONSTITUTION.md)**: read
-   this before any visual change.
-
-Looking for something to pick up? Issues labelled
-[`good first issue`](https://github.com/anirvamn/cattipu-os/labels/good%20first%20issue)
-are small and self-contained, and
-[`help wanted`](https://github.com/anirvamn/cattipu-os/labels/help%20wanted)
-marks larger roadmap work.
-
-## Setup
-
-Requires Node 20 or newer.
+**1. Set it up** (Node 20 or newer):
 
 ```bash
 git clone https://github.com/<you>/cattipu-os.git
 cd cattipu-os
-npm install          # use npm, not pnpm: package-lock.json is authoritative
-npm run dev          # http://localhost:3000
+npm install
+npm run dev
 ```
 
-The AI Console works with a local [Ollama](https://ollama.com) model
-(`ollama pull qwen2.5-coder:1.5b`) or with Claude (`AI_PROVIDER=claude`,
-`ANTHROPIC_API_KEY` in `.env.local`). Neither is needed for most work.
-Never commit `.env.local`.
+Open <http://localhost:3000>. You don't need an AI model for most changes.
+Use `npm`, not `pnpm`: `package-lock.json` is the lockfile.
 
-## Making a change
+**2. Pick something.** Issues labelled
+[`good first issue`](https://github.com/anirvamn/cattipu-os/labels/good%20first%20issue)
+are small and each one says where to look and when it's done. Comment on
+the issue so nobody else starts the same thing.
 
-1. **Open an issue first** for anything non-trivial, so we can agree on the
-   approach before you write code.
-2. Fork, then branch off `main`: `git checkout -b fix/short-description`.
-3. Keep the change focused: one logical change per pull request.
-4. Add or update tests in `tests/` for behaviour you change.
-5. Run the full check. It must pass:
+**3. Make the change and check it:**
 
-   ```bash
-   npm run verify       # typecheck, lint, all test suites
-   ```
+```bash
+npm run verify       # typecheck, lint and all tests; it must pass
+```
 
-6. For UI changes, include before/after screenshots in the pull request.
-7. Use [Conventional Commits](https://www.conventionalcommits.org/):
-   `feat(forge): …`, `fix(explorer): …`, `docs: …`. Commit under **your own**
-   name and email.
-8. Open the pull request against `main` and fill in the template.
+Add or update a test in `tests/` when you change behaviour. For anything
+visible, take a before and after screenshot.
 
-## What keeps a pull request mergeable
+**4. Open a pull request** against `main` and fill in the short template.
+A draft pull request is welcome if you're stuck; ask in it.
 
-CATTIPU has a deliberate design and architecture. These won't be merged,
-however good the code:
+## The five rules
 
-- **Visual redesigns.** No modern SaaS styling, glassmorphism, gradients,
-  pill buttons or rounded cards (2px maximum radius), new colours outside
-  `design-system/tokens.ts`, or icon libraries. Icons are PixelForge
-  (`design-system/ICON_REGISTRY_v1.0.md`).
-- **Second owners.** One window manager, one filesystem, one project store,
-  one notification system, one menu component. Extend the existing owner
-  rather than adding a parallel one.
-- **Provider logic in the UI.** AI providers live behind
-  `lib/adapters/ai`; React talks to services, never to a provider.
-- **Arbitrary execution.** Forge and Launch run fixed executables with fixed
-  arguments. No shell strings, and nothing that runs commands from a
-  request, a project file or the AI.
-- **Secrets** in code, tests, screenshots or docs.
+CATTIPU has a deliberate look and architecture. A pull request that breaks
+one of these can't be merged, however good the code is. Everything else is
+open to discussion.
 
-If you're unsure, ask in the issue. That's what it's for.
+1. **Keep the look.** No modern SaaS styling (gradients, glass, pill
+   buttons, rounded cards beyond 2px), no colours outside
+   `design-system/tokens.ts`, no icon libraries. Icons are PixelForge.
+2. **One owner per thing.** One window manager, one filesystem, one project
+   store, one notification system, one menu. Extend the existing one rather
+   than adding a second.
+3. **No AI provider code in React.** Providers live behind
+   `lib/adapters/ai`; the UI talks to services.
+4. **No arbitrary execution.** Forge and Launch run fixed programs with
+   fixed arguments. Nothing runs commands from a request, a project file or
+   the AI.
+5. **No secrets** in code, tests, screenshots or docs. Never commit
+   `.env.local`.
+
+If you're unsure whether something fits, ask in the issue before writing
+code. That's what issues are for.
+
+## Which documents do I need?
+
+Usually none beyond this page. When your change needs more,
+[`docs/README.md`](docs/README.md) tells you exactly which one to read, for
+example the design constitution for visual work. You do **not** need to read
+`PROJECT_CONSTITUTION.md`, `CLAUDE.md` or `docs/HANDOFF.md`; those are for
+the maintainer and AI sessions, and their commit and identity rules don't
+apply to you.
+
+## Commits
+
+- Commit under your own name and email.
+- Use [Conventional Commits](https://www.conventionalcommits.org/) where you
+  can: `fix(launch): …`, `feat(explorer): …`, `docs: …`.
+- Several commits in one pull request are fine.
+
+## Ways to help without writing code
+
+- **Try CATTIPU and tell us where it felt confusing.** Making it easy for
+  beginners is the whole point, so "I didn't know what to click" is a
+  useful bug report.
+- **Report how the local AI ran on your machine**: your RAM, GPU, the model
+  and how long answers took. This shapes which models CATTIPU picks
+  automatically.
+- Improve the docs, or check that the setup steps work on your system.
+
+Use the issue templates for bugs and ideas.
+
+## Bigger work
+
+The roadmap ([`docs/ROADMAP.md`](docs/ROADMAP.md)) is a sequence of sprints.
+The larger ones are open as
+[`help wanted`](https://github.com/anirvamn/cattipu-os/labels/help%20wanted)
+issues. Please comment and agree the approach first, because they touch
+several parts of the system.
 
 ## Questions and contact
 
 Open an issue, or reach out to the maintainer,
 [@anirvamn](https://github.com/anirvamn), directly (LinkedIn messages are
-welcome too).
+welcome too). Security problems go privately; see [`SECURITY.md`](SECURITY.md).
 
 By contributing you agree that your contributions are licensed under the
 project's [MIT License](LICENSE), and that you'll follow the

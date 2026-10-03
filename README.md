@@ -29,6 +29,28 @@ Motion. [Watch the full spot (MP4)](docs/media/cattipu-ad.mp4).*
 
 <p align="center"><sub>A project built by Forge (left) and running in Launch (right), with the desktop widgets floating on the wallpaper. Captured from the live app at 1600×900.</sub></p>
 
+## The agenda
+
+**Anyone should be able to turn an idea into a working app on their own
+computer, without feeling overwhelmed.**
+
+1. **Easy first.** A beginner types an idea in plain words and gets a
+   running app. Planning, files and builds are there when you want them,
+   never in your way.
+2. **Runs locally.** Your projects, your code and your AI stay on your
+   machine. No cloud account, no subscription, works offline.
+3. **The project remembers.** Every plan, decision, build and run is kept
+   in Project Memory, so the AI understands your project better the longer
+   you work on it.
+4. **Any model.** A local model by default; bring your own key for a
+   frontier model (Claude, OpenAI, Gemini) when you want more power.
+   CATTIPU is the workshop that makes any model useful.
+
+**The test we build against:** someone who has never written code installs
+CATTIPU with one click, types one sentence, and has their app running on
+their own laptop within minutes, without help. We are not there yet; the
+[roadmap](docs/ROADMAP.md) is the path.
+
 ## What is CATTIPU?
 
 Building software means juggling a planning doc, a design tool, an IDE, a
@@ -177,35 +199,43 @@ commit with a report in `docs/`. The rules are in
 gateway, Project Memory, AI-written files, real builds, and real local
 launches.
 
-**Next, in order:** ChatGPT-quality streaming AI → projects saved on disk →
-AI requirements interview into a plan → React apps with npm packages → an
-agent that builds, fixes and runs the app → a guided Create flow →
-a consistency sweep → showcase.
+| Phase | Sprints | Outcome |
+|---|---|---|
+| 1 · Foundation | v0.9, MVP-01 → 09 | **Done.** The pipeline works end to end on a developer's machine. |
+| 2 · Finished MVP | Q → X | A beginner goes from idea to plan to running app inside CATTIPU, with an AI that answers like ChatGPT. |
+| 3 · Production on your own machine | Y → AD | A desktop app with a one-click installer, automatic model setup, reliable starter apps, privacy and safety hardening, backups and updates. Ends in **CATTIPU 1.0**. |
+| After 1.0 | | Deploying apps, a marketplace for starters and extensions, macOS and Linux, collaboration. |
 
-**Then:** a native Windows application (Tauri), multiple LLM providers
-sharing one Project Memory, and Live deployment.
+"Production" here means a desktop application people install and trust
+with their work, not a hosted cloud service.
 
 Honest limits today: local AI answers are slow and short, Architect plans
 come from templates until the AI interview lands, Forge builds plain web
-apps only, and data lives in the browser until projects move to disk.
+apps only, data lives in the browser until projects move to disk, and
+running CATTIPU still needs Node and a terminal.
 
-Full plan: [`docs/ROADMAP.md`](docs/ROADMAP.md). Picking this up as a new
-contributor or AI session? Start with [`docs/HANDOFF.md`](docs/HANDOFF.md).
+Every sprint, with its goal and "done when": [`docs/ROADMAP.md`](docs/ROADMAP.md).
+Picking this up as an AI session or maintainer? Start with
+[`docs/HANDOFF.md`](docs/HANDOFF.md).
 
 ## Contributing
 
-Contributions are welcome. CATTIPU is at MVP stage and there is plenty to
-do, from small fixes to whole roadmap sprints.
+Contributions are welcome, and you don't need to read everything first.
 
-- Read [`CONTRIBUTING.md`](CONTRIBUTING.md) for setup, workflow and the
-  ground rules.
-- Pick up an issue labelled
-  [`good first issue`](https://github.com/anirvamn/cattipu-os/labels/good%20first%20issue)
-  or [`help wanted`](https://github.com/anirvamn/cattipu-os/labels/help%20wanted).
-- Read [`docs/HANDOFF.md`](docs/HANDOFF.md) for where things stand and what
-  comes next.
-- Report security issues privately; see [`SECURITY.md`](SECURITY.md).
+1. Set up in three commands: see [`CONTRIBUTING.md`](CONTRIBUTING.md) (no
+   AI model needed for most work).
+2. Pick an issue labelled
+   [`good first issue`](https://github.com/anirvamn/cattipu-os/labels/good%20first%20issue);
+   larger roadmap work is under
+   [`help wanted`](https://github.com/anirvamn/cattipu-os/labels/help%20wanted).
+3. Run `npm run verify` and open a pull request.
 
+Not a coder? Trying CATTIPU on your machine and telling us where it felt
+confusing, or how the local model performed on your hardware, helps just as
+much. [`docs/README.md`](docs/README.md) maps every document, so you only
+read what your change needs.
+
+Report security issues privately; see [`SECURITY.md`](SECURITY.md).
 Everyone involved follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
