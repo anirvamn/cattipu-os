@@ -126,7 +126,7 @@ Sprint R moves projects to disk.
 ## 7. The sprint queue (one sprint per session, strictly in order)
 
 Each sprint is one session, named by letter, and ends in **one commit**
-(author `anirva09 <anirvavjit2023@gmail.com>`, Conventional Commits, no AI
+(author `anirvamn <anirvavjit2023@gmail.com>`, Conventional Commits, no AI
 attribution), a `docs/MVP-XX_REPORT.md`, real-app verification and no push
 unless the owner asks. Each one checks that its predecessor is on `main`
 first.

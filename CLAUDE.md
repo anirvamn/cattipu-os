@@ -56,5 +56,5 @@ Examples:
 - `docs: update roadmap`
 - `style(shell): refine chrome`
 
-Author must be `anirva09 <anirvavjit2023@gmail.com>`.
+Author must be `anirvamn <anirvavjit2023@gmail.com>`.
 No AI attribution, no `Co-authored-by:` AI trailers.

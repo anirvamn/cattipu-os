@@ -5,7 +5,7 @@ Status: PERMANENT / CANONICAL / NORMATIVE
 Project: CATTIPU OS
 Repository: https://github.com/anirvamn/cattipu-os
 Canonical Branch: origin/main
-Repository Owner: anirvamn (GitHub account; commits are authored as anirva09, see section 3)
+Repository Owner: anirvamn (GitHub account; commits are authored as anirvamn, see section 3)
 
 This document is the permanent institutional memory and operating constitution
 for CATTIPU OS.
@@ -176,7 +176,7 @@ redirects):
 anirvamn
 ```
 
-Commits are still authored as `anirva09`; see section 3.
+Commits are authored as `anirvamn`; see section 3.
 
 The current `origin/main` HEAD is the baseline.
 Do not rely on old commit hashes after main advances.
@@ -188,7 +188,7 @@ Do not rely on old commit hashes after main advances.
 Every CATTIPU commit must use exactly:
 
 ```text
-Name: anirva09
+Name: anirvamn
 Email: anirvavjit2023@gmail.com
 ```
 
@@ -202,14 +202,14 @@ git config user.email
 Expected:
 
 ```text
-anirva09
+anirvamn
 anirvavjit2023@gmail.com
 ```
 
 If repository-local configuration must be corrected:
 
 ```bash
-git config user.name "anirva09"
+git config user.name "anirvamn"
 git config user.email "anirvavjit2023@gmail.com"
 ```
 
@@ -3061,7 +3061,7 @@ Before making any change:
 2. Fetch and inspect current `origin/main`.
 3. Verify working-tree safety.
 4. Verify Git identity is exactly:
-   - `anirva09`
+   - `anirvamn`
    - `anirvavjit2023@gmail.com`
 5. Run the repository baseline verification (`npm run verify`).
 6. Audit existing architecture relevant to the request.
