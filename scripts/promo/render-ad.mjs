@@ -1,4 +1,4 @@
-// Renders the CATTIPU 90s spot (scripts/promo/ad.ts) to video, with sound.
+// Renders the CATTIPU 90s spot (scripts/promo/ad.ts) to video.
 //
 //   node scripts/promo/record.mjs <app url>     (first: records the clips)
 //   node scripts/promo/render-ad.mjs
@@ -7,14 +7,18 @@
 // 2. opens it in headless Chrome or Edge (a throwaway profile, never yours)
 // 3. seeks the paused Motion sequence frame by frame, waiting for each
 //    frame's images, and captures every frame exactly
-// 4. renders the soundtrack offline (synthesized drums, bass and synths, and
-//    CATTIPU's own click on every real press), then records frames + sound
-//    into docs/media/cattipu-ad.mp4 with the browser's MediaRecorder
-// 5. writes docs/media/cattipu-ad.gif, a silent teaser of the fast section,
-//    with Python + Pillow
+// 4. records the frames into docs/media/cattipu-ad.mp4 with the browser's
+//    MediaRecorder — silent by default
+// 5. writes docs/media/cattipu-ad.gif, a teaser of the fast section, with
+//    Python + Pillow
+//
+// Settings (environment variables):
+//   AD_SPEED=1.5     playback speed of the whole spot (default 1.5: fast)
+//   AD_AUDIO=1       include the synthesized retro soundtrack (default off);
+//                    it is played at AD_SPEED too, so it stays in sync
+//   AD_FRAMES_DIR=…  keep the individual frames
 //
 // Needs: Chrome or Edge (or CHROME=<path>), Python 3 with Pillow for the GIF.
-// Set AD_FRAMES_DIR=<dir> to keep the individual frames.
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -25,6 +29,9 @@ import { launch } from "./cdp.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const FPS = 25;
+const SPEED = Number(process.env.AD_SPEED ?? 1.5);
+const AUDIO = process.env.AD_AUDIO === "1";
+if (!(SPEED > 0)) throw new Error("AD_SPEED must be a positive number.");
 const W = 640;
 const H = 480;
 const CLIPS_DIR = join(ROOT, "scripts", "promo", ".cache", "clips");
@@ -120,8 +127,8 @@ try {
   await b.evaluate("document.fonts.ready.then(() => true)");
   const duration = await b.evaluate("window.__ad.duration");
   const musicEnd = await b.evaluate("window.__ad.musicEnd");
-  const total = Math.round(duration * FPS);
-  console.log(`spot ${duration.toFixed(2)}s (music to ${musicEnd}s), ${total} frames at ${FPS} fps`);
+  const total = Math.round((duration / SPEED) * FPS);
+  console.log(`spot ${duration.toFixed(2)}s at ${SPEED}x = ${(duration / SPEED).toFixed(2)}s, ${total} frames at ${FPS} fps, ${AUDIO ? `sound (music to ${musicEnd}s)` : "silent"}`);
 
   // ── 3. frame-exact capture ─────────────────────────────────────────────
   const framesDir = process.env.AD_FRAMES_DIR ? resolve(process.env.AD_FRAMES_DIR) : join(work, "frames");
@@ -129,18 +136,19 @@ try {
   mkdirSync(framesDir, { recursive: true });
   const frameFile = (f) => join(framesDir, `f${String(f).padStart(4, "0")}.jpg`);
   for (let f = 0; f < total; f += 1) {
-    await b.evaluate(`window.__ad.seek(${(f / FPS).toFixed(4)}).then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(true)))))`);
+    await b.evaluate(`window.__ad.seek(${((f / FPS) * SPEED).toFixed(4)}).then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(true)))))`);
     const shot = await b.send("Page.captureScreenshot", { format: "jpeg", quality: 92, clip: { x: 0, y: 0, width: W, height: H, scale: 1 } });
     writeFileSync(frameFile(f), Buffer.from(shot.data, "base64"));
     if (f % 250 === 0) console.log(`  frame ${f}/${total}`);
   }
   console.log("frames captured");
 
-  // ── 4. sound + MP4, recorded by the browser ─────────────────────────────
+  // ── 4. MP4 (and, with AD_AUDIO=1, its sound), recorded by the browser ───
   const frameUrls = Array.from({ length: total }, (_, f) => url(frameFile(f)));
   const encoded = await b.evaluate(`(async () => {
     const urls = ${JSON.stringify(frameUrls)};
-    const audioBuffer = await window.__ad.renderAudio();
+    const withAudio = ${AUDIO};
+    const audioBuffer = withAudio ? await window.__ad.renderAudio() : null;
     const canvas = document.getElementById('out');
     const g = canvas.getContext('2d');
     const cache = new Map();
@@ -151,18 +159,24 @@ try {
     for (let f = 0; f < 50; f += 1) get(f);
     g.drawImage(await get(0), 0, 0);
     // The soundtrack is rendered at 22 kHz for its period sound; playback
-    // resamples it to the device rate the encoder expects.
-    const ac = new AudioContext();
-    await ac.resume();
-    const dest = ac.createMediaStreamDestination();
-    const src = ac.createBufferSource(); src.buffer = audioBuffer; src.connect(dest);
-    const stream = new MediaStream([...canvas.captureStream(${FPS}).getVideoTracks(), ...dest.stream.getAudioTracks()]);
-    const type = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/webm;codecs=vp9,opus'].find((t) => MediaRecorder.isTypeSupported(t));
-    const rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 6000000, audioBitsPerSecond: 192000 });
+    // resamples it to the device rate the encoder expects, at the spot's speed.
+    const ac = withAudio ? new AudioContext() : null;
+    let src = null;
+    const tracks = [...canvas.captureStream(${FPS}).getVideoTracks()];
+    if (ac) {
+      await ac.resume();
+      const dest = ac.createMediaStreamDestination();
+      src = ac.createBufferSource(); src.buffer = audioBuffer; src.playbackRate.value = ${SPEED}; src.connect(dest);
+      tracks.push(...dest.stream.getAudioTracks());
+    }
+    const stream = new MediaStream(tracks);
+    const types = withAudio ? ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/webm;codecs=vp9,opus'] : ['video/mp4;codecs=avc1.42E01E', 'video/webm;codecs=vp9'];
+    const type = types.find((t) => MediaRecorder.isTypeSupported(t));
+    const rec = new MediaRecorder(stream, withAudio ? { mimeType: type, videoBitsPerSecond: 6000000, audioBitsPerSecond: 192000 } : { mimeType: type, videoBitsPerSecond: 6000000 });
     const chunks = []; rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
     const done = new Promise((res) => (rec.onstop = res));
     rec.start();
-    src.start();
+    if (src) src.start();
     const t0 = performance.now();
     for (let f = 0; f < urls.length; f += 1) {
       const img = await get(f);
@@ -172,7 +186,7 @@ try {
       const wait = t0 + (f + 1) * ${1000 / FPS} - performance.now();
       await new Promise((r) => setTimeout(r, Math.max(0, wait)));
     }
-    rec.stop(); await done; await ac.close();
+    rec.stop(); await done; if (ac) await ac.close();
     const blob = new Blob(chunks, { type });
     const buf = new Uint8Array(await blob.arrayBuffer());
     let s = ''; for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode(...buf.subarray(i, i + 0x8000));
@@ -184,9 +198,9 @@ try {
   writeFileSync(outVideo, Buffer.from(encoded.slice(cut + 1), "base64"));
   console.log(`video ${outVideo} (${mime})`);
 
-  // ── 5. GIF teaser for the README (the fast section, silent) ────────────
+  // ── 5. GIF teaser for the README: spot time 6–18s, at the spot's speed ──
   const py = spawnSync(process.platform === "win32" ? "python" : "python3", [
-    join(ROOT, "scripts", "promo", "frames-to-gif.py"), framesDir, OUT_GIF, String(Math.round(6 * FPS)), String(Math.round(18 * FPS)),
+    join(ROOT, "scripts", "promo", "frames-to-gif.py"), framesDir, OUT_GIF, String(Math.round((6 / SPEED) * FPS)), String(Math.round((18 / SPEED) * FPS)),
   ], { stdio: "inherit" });
   if (py.status !== 0) console.warn("GIF skipped: Python with Pillow is needed.");
 } finally {
