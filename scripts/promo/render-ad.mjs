@@ -1,43 +1,51 @@
-// Renders the CATTIPU 90s spot (scripts/promo/ad.ts) to video.
+// Renders the CATTIPU 90s spot (scripts/promo/ad.ts) to video, with sound.
 //
+//   node scripts/promo/record.mjs <app url>     (first: records the clips)
 //   node scripts/promo/render-ad.mjs
 //
-// 1. bundles ad.ts (Motion timeline) with the repository's own esbuild
+// 1. bundles ad.ts (one Motion timeline) with the repository's own esbuild
 // 2. opens it in headless Chrome or Edge (a throwaway profile, never yours)
-// 3. pauses the Motion sequence and seeks it frame by frame, capturing each
-//    frame exactly: no screen recording, no dropped frames
-// 4. encodes docs/media/cattipu-ad.mp4 in the same browser (MediaRecorder)
-// 5. writes docs/media/cattipu-ad.gif with Python + Pillow, for the README
+// 3. seeks the paused Motion sequence frame by frame, waiting for each
+//    frame's images, and captures every frame exactly
+// 4. renders the soundtrack offline (synthesized drums, bass and synths, and
+//    CATTIPU's own click on every real press), then records frames + sound
+//    into docs/media/cattipu-ad.mp4 with the browser's MediaRecorder
+// 5. writes docs/media/cattipu-ad.gif, a silent teaser of the fast section,
+//    with Python + Pillow
 //
 // Needs: Chrome or Edge (or CHROME=<path>), Python 3 with Pillow for the GIF.
 // Set AD_FRAMES_DIR=<dir> to keep the individual frames.
-import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { build } from "esbuild";
+import { launch } from "./cdp.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const FPS = 25;
 const W = 640;
 const H = 480;
+const CLIPS_DIR = join(ROOT, "scripts", "promo", ".cache", "clips");
 const OUT_MP4 = join(ROOT, "docs", "media", "cattipu-ad.mp4");
 const OUT_GIF = join(ROOT, "docs", "media", "cattipu-ad.gif");
+const url = (p) => pathToFileURL(p).href;
+const asset = (p) => url(join(ROOT, p));
 
-const BROWSERS = [
-  process.env.CHROME,
-  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-  "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-  "/usr/bin/google-chrome",
-  "/usr/bin/chromium",
-].filter(Boolean);
-const browserPath = BROWSERS.find((p) => existsSync(p));
-if (!browserPath) throw new Error("No Chrome or Edge found. Set CHROME=<path to the browser>.");
+if (!existsSync(CLIPS_DIR)) throw new Error("No recorded clips. Run: node scripts/promo/record.mjs <app url>");
+const clips = {};
+for (const name of readdirSync(CLIPS_DIR)) {
+  const meta = JSON.parse(readFileSync(join(CLIPS_DIR, name, "clip.json"), "utf8"));
+  clips[name] = {
+    duration: meta.duration,
+    showCursor: meta.showCursor,
+    cursor: meta.cursor,
+    frames: meta.frames.map((f) => ({ url: url(join(CLIPS_DIR, name, f.file)), t: f.t })),
+  };
+}
 
 const work = mkdtempSync(join(tmpdir(), "cattipu-ad-"));
-const asset = (p) => pathToFileURL(join(ROOT, p)).href;
 
 // ── 1. the page ──────────────────────────────────────────────────────────
 const bundle = await build({
@@ -47,9 +55,11 @@ const bundle = await build({
   format: "iife",
   platform: "browser",
   target: "es2020",
+  tsconfig: join(ROOT, "tsconfig.json"),
   define: { "process.env.NODE_ENV": '"production"' },
   logLevel: "warning",
 });
+const paper = asset("public/assets/cattipu/engineering-paper-8px.png");
 const css = `
 @font-face { font-family: "Px437"; src: url("${asset("public/fonts/Web437_IBM_VGA_8x16.woff")}"); }
 @font-face { font-family: "Ark"; src: url("${asset("public/fonts/ArkPixel-12px-Proportional-Latin.woff2")}"); }
@@ -57,21 +67,25 @@ html, body { margin: 0; background: #000; }
 #stage { position: relative; width: ${W}px; height: ${H}px; overflow: hidden; background: #000;
   filter: saturate(1.25) contrast(1.06) blur(0.45px); }
 .shot { position: absolute; inset: 0; opacity: 0; overflow: hidden; }
-.frame { position: absolute; left: 0; top: 0; transform-origin: 0 0; image-rendering: auto; }
+.frame { position: absolute; left: 0; top: 0; width: 1600px; height: 900px; transform-origin: 0 0; }
+.fill { position: absolute; left: 0; top: 0; width: 1600px; height: 900px; }
+.cursor { position: absolute; left: 0; top: 0; width: 27px; height: 42px; image-rendering: pixelated; transform-origin: 2px 2px; }
+.cursor.hand { width: 64px; height: 64px; transform-origin: 18px 2px; }
 .card { display: grid; place-items: center; }
-.card-text { font-family: "Px437", monospace; letter-spacing: 1px; text-align: center; padding: 0 32px;
+.card-stack { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.card-text { font-family: "Px437", monospace; letter-spacing: 1px; text-align: center; padding: 0 28px; line-height: 1;
   text-shadow: 2px 0 rgba(255,60,60,.55), -2px 0 rgba(60,200,255,.35); }
+.headline { position: absolute; left: 0; top: 200px; white-space: nowrap; font-family: "Px437", monospace;
+  font-size: 64px; color: #ff1e1e; }
+.fly { position: absolute; left: 304px; top: 224px; width: 32px; height: 32px; image-rendering: pixelated; opacity: 0; }
+.badge { width: 330px; height: 330px; border-radius: 50%; background: #C6971F; color: #002A73; display: grid;
+  place-items: center; text-align: center; font-family: "Px437", monospace; font-size: 40px; line-height: 1.1;
+  padding: 40px; box-sizing: border-box; box-shadow: inset 0 0 0 6px #002A73; }
+.wall { position: absolute; left: 0; top: 0; width: ${W}px; height: ${H}px; transform-origin: 50% 50%; image-rendering: pixelated; }
 .glitch { color: #ff1e1e; font-size: 96px; filter: blur(0.6px); }
 .flash { background: #fffbe8; }
-.hand-plate { background: #E9DFC4 url("${asset("public/assets/cattipu/engineering-paper-8px.png")}"); display: grid; place-items: center; }
-.giant-cursor { width: 320px; height: 320px; image-rendering: pixelated; }
-.arrow-cursor { position: absolute; left: 0; top: 0; width: 54px; height: 84px; image-rendering: pixelated; }
-.type-plate { background: #E9DFC4; display: grid; place-items: center; }
-.type-field { font-family: "Px437", monospace; padding: 22px 26px; min-width: 520px; background: #F4EEDD;
-  border: 3px solid; border-color: #6b5f45 #fffaf0 #fffaf0 #6b5f45; }
-.caret { margin-left: 2px; }
-.end-plate { background: #E9DFC4 url("${asset("public/assets/cattipu/engineering-paper-8px.png")}"); display: flex;
-  flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+.end-plate { background: #E9DFC4 url("${paper}"); display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 10px; }
 .end-logo { width: 170px; image-rendering: pixelated; }
 .end-name { font-family: "Px437", monospace; font-size: 46px; color: #002A73; letter-spacing: 2px; }
 .end-tag { font-family: "Ark", monospace; font-size: 24px; color: #1d1d1d; }
@@ -83,109 +97,91 @@ html, body { margin: 0; background: #000; }
 .band { height: 26px; inset: auto 0 auto 0; top: 0; background: linear-gradient(transparent, rgba(255,255,255,.10), transparent); }
 `;
 const html = `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style></head>
-<body><div id="stage"></div><script>window.__AD_BASE__ = ${JSON.stringify(pathToFileURL(ROOT).href)};</script>
+<body><div id="stage"></div><canvas id="out" width="${W}" height="${H}" style="display:none"></canvas>
+<script>window.__AD_BASE__ = ${JSON.stringify(url(ROOT))}; window.__CLIPS__ = ${JSON.stringify(clips)};</script>
 <script>${bundle.outputFiles[0].text}</script></body></html>`;
 const page = join(work, "ad.html");
 writeFileSync(page, html);
 
 // ── 2. the browser ───────────────────────────────────────────────────────
-const port = 9400 + Math.floor(Math.random() * 400);
-const proc = spawn(browserPath, [
-  "--headless=new", `--remote-debugging-port=${port}`, `--user-data-dir=${join(work, "profile")}`,
-  "--no-first-run", "--no-default-browser-check", "--hide-scrollbars", "--mute-audio",
-  "--allow-file-access-from-files", `--window-size=${W},${H}`, "--force-device-scale-factor=1", "about:blank",
-], { stdio: "ignore", windowsHide: true });
-
-let target;
-for (let i = 0; i < 60 && !target; i += 1) {
-  try {
-    target = (await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()).find((t) => t.type === "page");
-  } catch { /* starting */ }
-  if (!target) await new Promise((r) => setTimeout(r, 200));
-}
-if (!target) throw new Error("The browser did not start.");
-const ws = new WebSocket(target.webSocketDebuggerUrl);
-await new Promise((r, j) => { ws.onopen = r; ws.onerror = j; });
-let seq = 0;
-const pending = new Map();
-ws.onmessage = (m) => {
-  const msg = JSON.parse(m.data);
-  const p = pending.get(msg.id);
-  if (!p) return;
-  pending.delete(msg.id);
-  if (msg.error) p.reject(new Error(msg.error.message)); else p.resolve(msg.result);
-};
-const send = (method, params = {}) => new Promise((res, rej) => {
-  seq += 1; pending.set(seq, { resolve: res, reject: rej }); ws.send(JSON.stringify({ id: seq, method, params }));
-});
-const evaluate = async (expression) => {
-  const r = await send("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true });
-  if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description ?? r.exceptionDetails.text);
-  return r.result.value;
-};
-
+const b = await launch({ width: W, height: H, args: ["--allow-file-access-from-files", "--autoplay-policy=no-user-gesture-required"] });
 try {
-  await send("Page.enable");
-  await send("Emulation.setDeviceMetricsOverride", { width: W, height: H, deviceScaleFactor: 1, mobile: false });
-  await send("Page.navigate", { url: pathToFileURL(page).href });
-  for (let i = 0; i < 50; i += 1) {
-    if (await evaluate("!!window.__ad").catch(() => false)) break;
-    await new Promise((r) => setTimeout(r, 200));
+  await b.send("Page.navigate", { url: url(page) });
+  for (let i = 0; i < 60; i += 1) {
+    if (await b.evaluate("!!window.__ad").catch(() => false)) break;
+    await b.wait(200);
   }
-  await evaluate("document.fonts.ready.then(() => Promise.all([...document.images].map((i) => i.decode().catch(() => {})))).then(() => true)");
-  const duration = await evaluate("window.__ad.duration");
-  const total = Math.ceil(duration * FPS);
-  console.log(`spot ${duration.toFixed(2)}s, ${total} frames at ${FPS} fps`);
+  await b.evaluate("document.fonts.ready.then(() => true)");
+  const duration = await b.evaluate("window.__ad.duration");
+  const musicEnd = await b.evaluate("window.__ad.musicEnd");
+  const total = Math.round(duration * FPS);
+  console.log(`spot ${duration.toFixed(2)}s (music to ${musicEnd}s), ${total} frames at ${FPS} fps`);
 
   // ── 3. frame-exact capture ─────────────────────────────────────────────
-  // AD_FRAMES_DIR keeps the frames for inspection; by default they are temporary.
   const framesDir = process.env.AD_FRAMES_DIR ? resolve(process.env.AD_FRAMES_DIR) : join(work, "frames");
+  rmSync(framesDir, { recursive: true, force: true });
   mkdirSync(framesDir, { recursive: true });
+  const frameFile = (f) => join(framesDir, `f${String(f).padStart(4, "0")}.jpg`);
   for (let f = 0; f < total; f += 1) {
-    await evaluate(`(window.__ad.seek(${(f / FPS).toFixed(4)}), new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(true)))))`);
-    const shot = await send("Page.captureScreenshot", { format: "png", clip: { x: 0, y: 0, width: W, height: H, scale: 1 } });
-    writeFileSync(join(framesDir, `f${String(f).padStart(4, "0")}.png`), Buffer.from(shot.data, "base64"));
+    await b.evaluate(`window.__ad.seek(${(f / FPS).toFixed(4)}).then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(true)))))`);
+    const shot = await b.send("Page.captureScreenshot", { format: "jpeg", quality: 92, clip: { x: 0, y: 0, width: W, height: H, scale: 1 } });
+    writeFileSync(frameFile(f), Buffer.from(shot.data, "base64"));
+    if (f % 250 === 0) console.log(`  frame ${f}/${total}`);
   }
   console.log("frames captured");
 
-  // ── 4. MP4, encoded by the browser ─────────────────────────────────────
-  const frameUrls = Array.from({ length: total }, (_, f) => pathToFileURL(join(framesDir, `f${String(f).padStart(4, "0")}.png`)).href);
-  const mp4Base64 = await evaluate(`(async () => {
+  // ── 4. sound + MP4, recorded by the browser ─────────────────────────────
+  const frameUrls = Array.from({ length: total }, (_, f) => url(frameFile(f)));
+  const encoded = await b.evaluate(`(async () => {
     const urls = ${JSON.stringify(frameUrls)};
-    const imgs = await Promise.all(urls.map((u) => new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.src = u; })));
-    const canvas = document.createElement('canvas'); canvas.width = ${W}; canvas.height = ${H};
-    const ctx = canvas.getContext('2d'); ctx.drawImage(imgs[0], 0, 0);
-    const stream = canvas.captureStream(${FPS});
-    const type = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1.42E01E') ? 'video/mp4;codecs=avc1.42E01E' : 'video/webm;codecs=vp9';
-    const rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 6000000 });
+    const audioBuffer = await window.__ad.renderAudio();
+    const canvas = document.getElementById('out');
+    const g = canvas.getContext('2d');
+    const cache = new Map();
+    const get = (f) => {
+      if (!cache.has(f) && f < urls.length) cache.set(f, new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = urls[f]; }));
+      return cache.get(f);
+    };
+    for (let f = 0; f < 50; f += 1) get(f);
+    g.drawImage(await get(0), 0, 0);
+    const ac = new AudioContext({ sampleRate: audioBuffer.sampleRate });
+    await ac.resume();
+    const dest = ac.createMediaStreamDestination();
+    const src = ac.createBufferSource(); src.buffer = audioBuffer; src.connect(dest);
+    const stream = new MediaStream([...canvas.captureStream(${FPS}).getVideoTracks(), ...dest.stream.getAudioTracks()]);
+    const type = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/webm;codecs=vp9,opus'].find((t) => MediaRecorder.isTypeSupported(t));
+    const rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 6000000, audioBitsPerSecond: 192000 });
     const chunks = []; rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
-    const done = new Promise((res) => rec.onstop = res);
+    const done = new Promise((res) => (rec.onstop = res));
     rec.start();
+    src.start();
     const t0 = performance.now();
-    for (let f = 0; f < imgs.length; f += 1) {
-      ctx.drawImage(imgs[f], 0, 0);
+    for (let f = 0; f < urls.length; f += 1) {
+      const img = await get(f);
+      if (img) g.drawImage(img, 0, 0);
+      cache.delete(f - 2);
+      for (let k = 1; k <= 50; k += 1) get(f + k);
       const wait = t0 + (f + 1) * ${1000 / FPS} - performance.now();
       await new Promise((r) => setTimeout(r, Math.max(0, wait)));
     }
-    rec.stop(); await done;
+    rec.stop(); await done; await ac.close();
     const blob = new Blob(chunks, { type });
     const buf = new Uint8Array(await blob.arrayBuffer());
     let s = ''; for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode(...buf.subarray(i, i + 0x8000));
     return type + '|' + btoa(s);
   })()`);
-  const [mime, data] = [mp4Base64.slice(0, mp4Base64.indexOf("|")), mp4Base64.slice(mp4Base64.indexOf("|") + 1)];
+  const cut = encoded.indexOf("|");
+  const mime = encoded.slice(0, cut);
   const outVideo = mime.startsWith("video/mp4") ? OUT_MP4 : OUT_MP4.replace(/\.mp4$/, ".webm");
-  writeFileSync(outVideo, Buffer.from(data, "base64"));
+  writeFileSync(outVideo, Buffer.from(encoded.slice(cut + 1), "base64"));
   console.log(`video ${outVideo} (${mime})`);
 
-  // ── 5. GIF for the README ──────────────────────────────────────────────
-  const py = spawnSync(process.platform === "win32" ? "python" : "python3", [join(ROOT, "scripts", "promo", "frames-to-gif.py"), framesDir, OUT_GIF], { stdio: "inherit" });
+  // ── 5. GIF teaser for the README (the fast section, silent) ────────────
+  const py = spawnSync(process.platform === "win32" ? "python" : "python3", [
+    join(ROOT, "scripts", "promo", "frames-to-gif.py"), framesDir, OUT_GIF, String(Math.round(6 * FPS)), String(Math.round(18 * FPS)),
+  ], { stdio: "inherit" });
   if (py.status !== 0) console.warn("GIF skipped: Python with Pillow is needed.");
 } finally {
-  try { ws.close(); } catch { /* closed */ }
-  proc.kill();
-  await new Promise((r) => setTimeout(r, 1500));
-  // The browser can hold its profile a moment after exit; a leftover temp
-  // folder is not a failed render.
+  await b.close();
   try { rmSync(work, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 }); } catch { /* left in temp */ }
 }

@@ -187,5 +187,16 @@ collaboration. None of this starts before the MVP is finished.
 
 - `docs/media/screens/`: current screenshots at 1600×900, captured from the
   running app (scenes staged through its own UI, stores and APIs).
-- `docs/media/cattipu-ad.mp4` / `.gif`: the 90s-style spot. Regenerate with
-  `node scripts/promo/render-ad.mjs` after refreshing the screenshots.
+- `docs/media/cattipu-ad.mp4`: the 40-second 90s-style spot, with sound
+  (drums for 6s, a fast 150 BPM section to 30s with CATTIPU's own click on
+  every real press, then 10s of silence). `cattipu-ad.gif` is a silent
+  teaser of its fast section, for the README.
+- How it is made, all in `scripts/promo/`:
+  - `record.mjs <app url>` drives a running CATTIPU with real mouse and
+    keyboard input and records moving clips. It also builds and launches the
+    two demo apps in `scripts/promo/apps/`.
+  - `ad.ts` is one Motion timeline: cuts on the beat, zooms onto the real
+    clicks, and a synthesized soundtrack.
+  - `render-ad.mjs` renders it frame by frame and records picture and sound
+    to MP4.
+  - The clips are cached in `scripts/promo/.cache/` (gitignored).

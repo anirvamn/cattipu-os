@@ -18,8 +18,8 @@ with AI working for your project instead of owning it.
 
 <img src="docs/media/cattipu-ad.gif" alt="CATTIPU OS: a 90s-style spot" width="640">
 
-*The spot, built with Motion from real CATTIPU screens.
-[Watch it in full quality (MP4)](docs/media/cattipu-ad.mp4).*
+*A 40-second 90s-style spot made from real recordings of CATTIPU, cut on the
+beat with Motion. [Watch it with sound (MP4)](docs/media/cattipu-ad.mp4).*
 
 </div>
 
@@ -153,7 +153,7 @@ Ground rules the code is built on:
 | `store/` | Zustand stores, persisted and versioned |
 | `design-system/` | Tokens, bevels, icon registry |
 | `tests/` | 23 suites, 489 cases |
-| `scripts/promo/` | The 90s spot: a Motion timeline and its renderer |
+| `scripts/promo/` | The 90s spot: clip recorder, demo apps, Motion timeline, renderer |
 | `docs/` | Constitution, design system, sprint reports, handoff |
 
 ## Development
@@ -163,7 +163,8 @@ Ground rules the code is built on:
 | `npm run dev` | Development server |
 | `npm run build` | Production build |
 | `npm run verify` | Typecheck, lint and all tests |
-| `node scripts/promo/render-ad.mjs` | Re-render the spot (Chrome/Edge + Python Pillow) |
+| `node scripts/promo/record.mjs <url>` | Record the spot's clips from a running CATTIPU (`npm run dev`) |
+| `node scripts/promo/render-ad.mjs` | Render the spot with its soundtrack (Chrome/Edge + Python Pillow) |
 
 Every sprint is audited first, verified in the real app, and lands as one
 commit with a report in `docs/`. The rules are in
