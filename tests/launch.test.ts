@@ -44,7 +44,7 @@ import {
 } from "@/lib/contracts/launch";
 import { runProcess } from "@/lib/adapters/forge/processRunner";
 import { resolveEsbuildToolchain } from "@/lib/adapters/forge/esbuildToolchain";
-import { createLocalWebRuntime, staticServerScript, validPort } from "@/lib/adapters/launch/localWebRuntime";
+import { createLocalWebRuntime, exitReason, staticServerScript, validPort } from "@/lib/adapters/launch/localWebRuntime";
 import { spawnRuntimeProcess } from "@/lib/adapters/launch/runtimeProcess";
 import { createForgeService, type ForgeService } from "@/lib/services/forge/forgeService";
 import {
@@ -446,6 +446,32 @@ test("11 process exit: a runtime that dies on its own is FAILED, never left RUNN
   assert.equal((await raw(p.port!, "/")).status, 410);
   await until(() => statusOf(service, "pa")?.status === "failed");
   assert.match(statusOf(service, "pa")!.reason ?? "", /removed from disk/);
+});
+
+test("11 process exit on Windows: a code above 2^31 reads as its signed value, not an unsigned 32-bit number", async () => {
+  // Windows reports a force-killed process (TerminateProcess's -1) as 4294967295.
+  const reason = (code: number | null, signal: string | null = null) => exitReason({ code, signal }, "");
+  assert.equal(reason(4294967295), "The application's server exited (code -1).");
+  assert.equal(reason(3221225477), "The application's server exited (code -1073741819).");
+  assert.equal(reason(2147483648), "The application's server exited (code -2147483648).");
+  assert.equal(reason(2147483647), "The application's server exited (code 2147483647).");
+  assert.equal(reason(1), "The application's server exited (code 1).");
+  assert.equal(reason(0), "The application's server exited (code 0).");
+  assert.equal(reason(null, "SIGTERM"), "The application's server exited (signal SIGTERM).");
+  assert.equal(reason(null), "The application's server exited (no exit code).");
+
+  // The same through a real runtime: kill it and replay the unsigned code a Windows kill reports.
+  const windowsKill: RuntimeSpawner = (spec) => {
+    const child = recordingSpawner(spec);
+    return { ...child, onExit: (listener) => child.onExit(() => listener({ code: 4294967295, signal: null })) };
+  };
+  const service = launchService({ runtime: createLocalWebRuntime({ spawner: windowsKill }) });
+  running(await service.launch({ projectId: "pa", buildId: alphaBuild.buildId }));
+  process.kill([...pids].at(-1)!);
+  await until(() => statusOf(service, "pa")?.status !== "running");
+  const after = statusOf(service, "pa")!;
+  assert.equal(after.status, "failed");
+  assert.equal(after.reason, "The application's server exited unexpectedly (code -1).");
 });
 
 test("12 failed launch: a runtime that cannot come up is FAILED with its reason, and nothing is left running", async () => {
