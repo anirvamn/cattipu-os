@@ -140,7 +140,8 @@ export interface MemoryService {
   /** This project's memory as request data. Only this project's entries. */
   contextFor(project: CattipuProject): ProjectMemoryContext;
   /** Memory for a duplicated project: its notes and prompts, re-owned by
-   *  the copy; not its conversations, which are the source's history. */
+   *  the copy; not its conversations, nor its latest-build and
+   *  latest-launch records, which are the source's history. */
   forDuplicate(memory: MemoryArtifacts, projectId: string): MemoryArtifacts;
 }
 

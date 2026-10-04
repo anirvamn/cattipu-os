@@ -6,6 +6,8 @@ import {
   type ProjectMemoryContext,
 } from "@/lib/contracts/memory";
 import type { MemoryArtifacts, MemoryRecord, ProjectConversation } from "@/lib/project/types";
+import { BUILD_MEMORY_RECORD_ID } from "@/lib/services/forge/buildHistory";
+import { LAUNCH_MEMORY_RECORD_ID } from "@/lib/services/launch/launchHistory";
 
 import { promptService } from "./promptService";
 
@@ -19,6 +21,11 @@ import { promptService } from "./promptService";
  */
 
 const fail = <T>(reason: MemoryFailure): MemoryChange<T> => ({ ok: false, reason });
+
+/** The records Forge and Launch keep about a project's own latest build and
+ *  launch. They belong to the project that made them, so a duplicate leaves
+ *  them behind. */
+const SOURCE_HISTORY_RECORD_IDS: readonly string[] = [BUILD_MEMORY_RECORD_ID, LAUNCH_MEMORY_RECORD_ID];
 
 function checkText(text: string): MemoryFailure | null {
   if (!text) return "empty-text";
@@ -115,8 +122,13 @@ export const memoryService: MemoryService = {
   },
 
   forDuplicate(memory, projectId): MemoryArtifacts {
+    const copy = structuredClone(memory);
     return {
-      ...structuredClone(memory),
+      ...copy,
+      // The latest build and launch are the source's history: they point at
+      // runs the copy never had. Forge and Launch write them again, in
+      // place, when the copy has a build or a launch of its own.
+      records: copy.records.filter((r) => !SOURCE_HISTORY_RECORD_IDS.includes(r.id)),
       prompts: memory.prompts.map((p) => ({ ...p, projectId })),
       conversations: [],
     };

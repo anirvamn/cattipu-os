@@ -440,6 +440,10 @@ export const useProjectStore = create<ProjectState>()(
           // MVP-05: the copy's memory is its own — notes and prompts
           // re-owned by the copy, no conversations (they are history).
           memory: memoryService.forDuplicate(source.memory, copyId),
+          // MVP-07: builds are the source's history too. Their artifacts
+          // are stored under the source's id, so the copy could not launch
+          // them, yet it would show as built.
+          forge: { ...structuredClone(source.forge), builds: [] },
           // MVP-08: launches are the source's history; the copy has none.
           launch: { ...structuredClone(source.launch), runs: [] },
           name: `${source.name} copy`,

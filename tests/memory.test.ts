@@ -23,6 +23,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type Anthropic from "@anthropic-ai/sdk";
 
 import type { AIProvider, AIProviderRequest, AIRequest, AIResult, AIService } from "@/lib/contracts/ai";
+import type { BuildResult } from "@/lib/contracts/forge";
+import type { LaunchRuntime } from "@/lib/contracts/launch";
 import { MEMORY_LIMITS, type ProjectMemoryContext } from "@/lib/contracts/memory";
 import { PROJECT_SCHEMA_VERSION, createProject, type CattipuProject } from "@/lib/project/types";
 import { migrateProject } from "@/lib/project/migrate";
@@ -30,6 +32,8 @@ import { activeProject } from "@/lib/os/projects";
 import { createAIGateway } from "@/lib/services/ai/aiGateway";
 import { assembleContext, parseMemoryContext } from "@/lib/services/ai/contextAssembly";
 import { createProviderRegistry } from "@/lib/services/ai/providerRegistry";
+import { BUILD_MEMORY_RECORD_ID } from "@/lib/services/forge/buildHistory";
+import { LAUNCH_MEMORY_RECORD_ID } from "@/lib/services/launch/launchHistory";
 import { memoryService } from "@/lib/services/memory/memoryService";
 import { promptService } from "@/lib/services/memory/promptService";
 import { createClaudeProvider } from "@/lib/adapters/ai/providers/claude/claudeProvider";
@@ -607,6 +611,73 @@ test("12 leakage: a duplicated project re-owns the notes and prompts and starts 
     assert.equal(promptService.active(copy)?.name, "Alpha prompt");
     assert.deepEqual(copy.memory.conversations, []);
     assert.equal(memoryService.activeConversation(byId(stores, "pa"))?.messages.length, 2, "the source keeps its history");
+  });
+});
+
+test("12 leakage: a duplicated project starts with no latest-build or latest-launch record and no build history", async () => {
+  await session(new Map(), (stores) => {
+    stores.projects.setState({ projects: alphaBeta() });
+    stores.projects.getState().addMemoryRecord("pa", { kind: "context", text: "Alpha project memory" });
+
+    const buildOf = (projectId: string, buildId: string): BuildResult => ({
+      buildId,
+      projectId,
+      target: "web-app",
+      configuration: "production",
+      status: "success",
+      startedAt: "2026-09-29T00:00:00.000Z",
+      completedAt: "2026-09-29T00:00:01.000Z",
+      durationMs: 1000,
+      summary: "Built",
+      diagnostics: [],
+      output: "",
+      artifact: { reference: `forge://${projectId}/${buildId}`, location: "C:/x", entry: "index.html", files: [], bytes: 1 },
+      executed: true,
+      sourceFiles: 2,
+    });
+    const runtime: LaunchRuntime = {
+      launchId: "launch-a1",
+      projectId: "pa",
+      buildId: "build-a1",
+      artifact: "forge://pa/build-a1",
+      runtime: "local-web",
+      status: "stopped",
+      endpoint: "http://127.0.0.1:50999",
+      port: 50999,
+      startedAt: "2026-09-29T00:00:02.000Z",
+      readyAt: "2026-09-29T00:00:03.000Z",
+      endedAt: "2026-09-29T00:00:04.000Z",
+      exitCode: 0,
+      reason: null,
+    };
+    assert.equal(stores.projects.getState().recordForgeBuild("pa", buildOf("pa", "build-a1")), true);
+    assert.equal(stores.projects.getState().recordLaunch("pa", runtime), true);
+    const source = byId(stores, "pa");
+    const ids = (p: CattipuProject) => p.memory.records.map((r) => r.id);
+    assert.ok(ids(source).includes(BUILD_MEMORY_RECORD_ID) && ids(source).includes(LAUNCH_MEMORY_RECORD_ID), "the source remembers its latest build and launch");
+
+    const copy = stores.projects.getState().duplicateProject("pa");
+    assert.ok(copy);
+    if (!copy) return;
+    assert.equal(ids(copy).includes(BUILD_MEMORY_RECORD_ID), false, "the copy has no latest-build record");
+    assert.equal(ids(copy).includes(LAUNCH_MEMORY_RECORD_ID), false, "the copy has no latest-launch record");
+    assert.deepEqual(copy.memory.records.map((r) => r.text), ["Alpha project memory"], "its own notes are kept");
+    assert.deepEqual(copy.forge.builds, [], "builds are the source's history, and their artifacts are stored under the source's id");
+    assert.deepEqual(copy.launch.runs, []);
+
+    // The source is untouched: duplicating never edits what it copies.
+    const after = byId(stores, "pa");
+    assert.deepEqual(ids(after), ids(source));
+    assert.deepEqual(after.forge.builds.map((b) => b.id), ["build-a1"]);
+    assert.deepEqual(after.launch.runs.map((r) => r.id), ["launch-a1"]);
+
+    // The copy's first build of its own is recorded fresh, against its own id.
+    assert.equal(stores.projects.getState().recordForgeBuild(copy.id, buildOf(copy.id, "build-c1")), true);
+    const built = byId(stores, copy.id);
+    assert.deepEqual(built.forge.builds.map((b) => b.id), ["build-c1"]);
+    const latest = built.memory.records.filter((r) => r.id === BUILD_MEMORY_RECORD_ID);
+    assert.equal(latest.length, 1);
+    assert.deepEqual(latest[0].refs, [{ kind: "forge-build", id: "build-c1" }]);
   });
 });
 
