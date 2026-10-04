@@ -5,6 +5,7 @@ import { join } from "node:path";
 import {
   LAUNCH_HOST,
   LAUNCH_LIMITS,
+  describeExit,
   launchEndpoint,
   type RuntimeAdapter,
   type RuntimeChild,
@@ -57,7 +58,7 @@ export function exitReason(exit: RuntimeExit, stderr: string): string {
   const known = exit.code !== null ? EXIT_REASONS[exit.code] : undefined;
   if (known) return known;
   const tail = stderr.trim().split(/\r?\n/).pop()?.slice(0, LAUNCH_LIMITS.maxReasonChars);
-  const how = exit.code !== null ? `code ${exit.code}` : exit.signal ? `signal ${exit.signal}` : "no exit code";
+  const how = describeExit(exit);
   return tail ? `The application's server exited (${how}): ${tail}` : `The application's server exited (${how}).`;
 }
 

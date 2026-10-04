@@ -1,6 +1,7 @@
 import {
   LAUNCH_HOST,
   LAUNCH_LIMITS,
+  describeExit,
   launchEndpoint,
   type LaunchError,
   type LaunchRequest,
@@ -224,7 +225,7 @@ export function createLaunchService(options: LaunchServiceOptions): LaunchServic
               reason:
                 exit.code === 3
                   ? "The artifact this application served was removed from disk."
-                  : `The application's server exited unexpectedly (${exit.code !== null ? `code ${exit.code}` : exit.signal ? `signal ${exit.signal}` : "no exit code"}).`,
+                  : `The application's server exited unexpectedly (${describeExit(exit)}).`,
             });
           }
         });

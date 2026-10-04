@@ -147,6 +147,14 @@ export interface RuntimeExit {
   signal: string | null;
 }
 
+/** How an exit reads in a reason. Windows reports a force-killed process as an
+ *  unsigned 32-bit code (TerminateProcess's -1 is 4294967295), so a code above
+ *  2^31 - 1 is shown as its signed value. */
+export function describeExit(exit: RuntimeExit): string {
+  if (exit.code !== null) return `code ${exit.code > 0x7fffffff ? exit.code - 0x100000000 : exit.code}`;
+  return exit.signal ? `signal ${exit.signal}` : "no exit code";
+}
+
 /** A started child, as Launch sees it. */
 export interface RuntimeChild {
   pid: number | null;
